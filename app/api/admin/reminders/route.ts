@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-export async function GET(req: Request) {
+async function handleGET(req: Request) {
   const denied = requireAdmin(req); if (denied) return denied;
   const url = new URL(req.url);
   const when = url.searchParams.get("date");
@@ -24,7 +24,7 @@ export async function GET(req: Request) {
   });
 }
 
-export async function POST(req: Request) {
+async function handlePOST(req: Request) {
   const denied = requireAdmin(req); if (denied) return denied;
   const body = await req.json().catch(() => ({}));
   if (body.action === "send") {
@@ -41,4 +41,22 @@ export async function POST(req: Request) {
     return Response.json({ ok: true, settings: await getStore().saveSettings(patch) });
   }
   return Response.json({ error: "Unknown action" }, { status: 400 });
+}
+
+export const GET = (req: Request) => withErrors(() => handleGET(req));
+export const POST = (req: Request) => withErrors(() => handlePOST(req));
+
+/** Turn any unexpected failure into a readable message instead of a bare 500. */
+async function withErrors(fn: () => Promise<Response>): Promise<Response> {
+  try { return await fn(); }
+  catch (e: any) {
+    const msg = String(e?.message ?? e);
+    const hint = /EROFS|read-only|ENOENT|EACCES/i.test(msg)
+      ? " The server could not write its data file. Connect the database (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Vercel → Settings → Environment Variables) and redeploy."
+      : /relation .* does not exist|schema cache/i.test(msg)
+      ? " The database tables are missing: run supabase/schema.sql in the Supabase SQL editor."
+      : "";
+    console.error(msg);
+    return Response.json({ error: `Something went wrong: ${msg}.${hint}` }, { status: 500 });
+  }
 }

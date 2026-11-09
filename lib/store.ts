@@ -136,10 +136,14 @@ export function getStore(): Store {
   if (singleton) return singleton;
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  singleton = url && key ? supabaseStore(url, key) : fileStore(process.env.LOCAL_DB_PATH ?? `${process.cwd()}/data/db.json`);
+  // On Vercel the project folder is read-only; only /tmp is writable, and it is wiped on
+  // every deploy and not shared between instances. Fine for a first look, not for real use.
+  const fallbackPath = process.env.LOCAL_DB_PATH ?? (process.env.VERCEL ? "/tmp/juit-timetable-db.json" : `${process.cwd()}/data/db.json`);
+  singleton = url && key ? supabaseStore(url, key) : fileStore(fallbackPath);
   return singleton;
 }
 
-export function storeKind() {
-  return process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY ? "supabase" : "local-file";
+export function storeKind(): "supabase" | "local-file" | "ephemeral" {
+  if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) return "supabase";
+  return process.env.VERCEL ? "ephemeral" : "local-file";
 }
