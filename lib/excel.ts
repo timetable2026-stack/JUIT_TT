@@ -168,7 +168,7 @@ export function parseSheets(sheets: Partial<RawSheets>): ParseResult {
     if (!id && !name && !email) return; // blank row
     if (!id) return err("Faculty", "Faculty ID is empty.", row, "Faculty ID");
     if (facById.has(id)) return err("Faculty", `Faculty ID ${id} appears twice.`, row, "Faculty ID");
-    if (!name) err("Faculty", `Name is empty for ${id}.`, row, "Full name");
+    if (!name) warn("Faculty", `No name for ${id} yet — the portal shows the code until the Full name column is filled.`, row, "Full name");
     if (!email) warn("Faculty", `No email for ${id} — they can use the portal, but cannot be emailed when their classes change.`, row, "Email");
     else if (!EMAIL_RE.test(email)) err("Faculty", `Email "${email}" is not a valid address.`, row, "Email");
     else if (emailOwner.has(email)) err("Faculty", `Email ${email} is used by both ${emailOwner.get(email)} and ${id}.`, row, "Email");
@@ -177,7 +177,7 @@ export function parseSheets(sheets: Partial<RawSheets>): ParseResult {
     const role = roleRaw.startsWith("admin") ? "Admin" : roleRaw.startsWith("hod") || roleRaw.includes("head") ? "HOD" : "Faculty";
     const f: Faculty = {
       id,
-      name,
+      name: name || id,
       email,
       department: pick(r, COLS.department) || undefined,
       designation: pick(r, COLS.designation) || undefined,
