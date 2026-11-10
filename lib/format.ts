@@ -26,14 +26,14 @@ function shell(o: { department: string; institute?: string; preheader?: string; 
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:680px;background:#ffffff;border-radius:12px;overflow:hidden;font-family:Arial,Helvetica,sans-serif;color:#1a1d21">
     <tr><td style="background:${NAVY};color:#fff;padding:16px 24px">
       <div style="font-size:12px;letter-spacing:.06em;text-transform:uppercase;opacity:.85">${esc(o.department)}</div>
-      <div style="font-size:18px;font-weight:bold;margin-top:2px">Department Timetable</div>
+      <div style="font-size:18px;font-weight:bold;margin-top:2px">JUIT Timetable</div>
     </td></tr>
     <tr><td style="padding:24px">${o.body}</td></tr>
     <tr><td style="padding:14px 24px;border-top:1px solid #e3e7ec;font-size:12px;color:#6b7684;line-height:1.5">${o.footer}${o.institute ? `<br>${esc(o.institute)}` : ""}</td></tr>
   </table></td></tr></table></body></html>`;
 }
 const button = (href: string, label: string) => `<a href="${href}" style="display:inline-block;background:${NAVY};color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:bold;font-size:15px">${label}</a>`;
-const note = (text: string) => `<div style="background:#fff6d6;border-left:4px solid #f0b429;padding:10px 14px;border-radius:0 8px 8px 0;margin:16px 0"><b>Note from the Timetable Office:</b> ${esc(text)}</div>`;
+const note = (text: string) => `<div style="background:#fff6d6;border-left:4px solid #f0b429;padding:10px 14px;border-radius:0 8px 8px 0;margin:16px 0"><b>Note from the TTC:</b> ${esc(text)}</div>`;
 const linkLine = (href: string) => `<div style="font-size:12px;color:#6b7684;margin-top:8px;word-break:break-all">If the button does not open, copy this link: <a href="${href}" style="color:${NAVY}">${href}</a></div>`;
 
 function weekTableHtml(data: Dataset, slots: Slot[]) {
@@ -67,7 +67,7 @@ export function firstPublishEmail(opts: { data: Dataset; faculty: Faculty; siteU
   const subject = `Your timetable for ${opts.semesterNames.length > 1 ? "the semester" : opts.semesterNames[0]} is published — ${mine.length} periods/week`;
   const body = `
     <h2 style="margin:0 0 6px;font-size:20px">Dear ${esc(salute(faculty))},</h2>
-    <p style="margin:0 0 14px;line-height:1.55">The department timetable${term ? ` for <b>${esc(term)}</b>` : ""} is now published. Your classes, room and section timetables, the faculty directory and every future change are available at one permanent link. No password is needed; the link below opens your personal view.</p>
+    <p style="margin:0 0 14px;line-height:1.55">The university timetable${term ? ` for <b>${esc(term)}</b>` : ""} is now published. Your classes, room and section timetables, the faculty directory and every future change are available at one permanent link. No password is needed; the link below opens your personal view.</p>
     <p style="margin:0 0 6px">${button(link, "Open my timetable")}</p>${linkLine(link)}
     ${opts.note ? note(opts.note) : ""}
     <h3 style="margin:22px 0 8px;font-size:15px;color:${NAVY}">Your week — ${mine.length} period${mine.length === 1 ? "" : "s"}</h3>
@@ -78,9 +78,9 @@ export function firstPublishEmail(opts: { data: Dataset; faculty: Faculty; siteU
       <li>Each teaching morning at 7:00 you receive a short list of that day's classes. You can turn this off from your timetable page.</li>
       <li>Add the timetable to your phone or Outlook calendar: <a href="${icsLink(siteUrl, faculty.id)}" style="color:${NAVY}">calendar subscription</a> (it updates itself when the timetable changes).</li>
     </ul>
-    <p style="margin:18px 0 0;line-height:1.55">If anything in your timetable looks wrong, reply to this email and the Timetable Office will correct it.</p>`;
-  const html = shell({ department, institute: opts.institute, preheader: `${mine.length} periods this week. Open your personal timetable.`, body, footer: `You are receiving this because you are listed in the department timetable. Replies go to the Timetable Office.` });
-  const text = `Dear ${salute(faculty)},\n\nThe department timetable${term ? ` for ${term}` : ""} is now published.\n\nOpen my timetable: ${link}\n${opts.note ? `\nNote from the Timetable Office: ${opts.note}\n` : ""}\nYour week (${mine.length} periods):\n${mine.map((s) => `  ${s.day} P${s.period} ${s.start}-${s.end}  ${s.subjectCode}  ${s.semester}${s.batch ? " " + shortBatch(s.batch) : ""}  ${s.room}`).join("\n")}\n\nYou will be emailed when your classes change, and each teaching morning with that day's classes.\nCalendar subscription: ${icsLink(siteUrl, faculty.id)}\n\nIf anything looks wrong, reply to this email.`;
+    <p style="margin:18px 0 0;line-height:1.55">If anything in your timetable looks wrong, reply to this email and the Time Table Committee will correct it.</p>`;
+  const html = shell({ department, institute: opts.institute, preheader: `${mine.length} periods this week. Open your personal timetable.`, body, footer: `You are receiving this because you are listed in the university timetable. Replies go to the Time Table Committee.` });
+  const text = `Dear ${salute(faculty)},\n\nThe university timetable${term ? ` for ${term}` : ""} is now published.\n\nOpen my timetable: ${link}\n${opts.note ? `\nNote from the TTC: ${opts.note}\n` : ""}\nYour week (${mine.length} periods):\n${mine.map((s) => `  ${s.day} P${s.period} ${s.start}-${s.end}  ${s.subjectCode}  ${s.semester}${s.batch ? " " + shortBatch(s.batch) : ""}  ${s.room}`).join("\n")}\n\nYou will be emailed when your classes change, and each teaching morning with that day's classes.\nCalendar subscription: ${icsLink(siteUrl, faculty.id)}\n\nIf anything looks wrong, reply to this email.`;
   return { subject, html, text };
 }
 
@@ -93,15 +93,15 @@ export function changeEmail(opts: { data: Dataset; faculty: Faculty; changes: Ch
   const mine = slotsForFaculty(data, faculty.id);
   const body = `
     <h2 style="margin:0 0 6px;font-size:20px">Dear ${esc(salute(faculty))},</h2>
-    <p style="margin:0 0 14px;line-height:1.55">The department timetable has been revised. ${n === 1 ? "One change affects your classes" : `${n} changes affect your classes`}:</p>
+    <p style="margin:0 0 14px;line-height:1.55">The university timetable has been revised. ${n === 1 ? "One change affects your classes" : `${n} changes affect your classes`}:</p>
     <ol style="margin:0 0 16px;padding-left:22px;line-height:1.6">${changes.map((c) => `<li style="margin:4px 0">${esc(c.text)}</li>`).join("")}</ol>
     ${opts.note ? note(opts.note) : ""}
     <p style="margin:0 0 6px">${button(link, "View changes and mark as seen")}</p>${linkLine(link)}
     <h3 style="margin:22px 0 8px;font-size:15px;color:${NAVY}">Your updated week</h3>
     ${weekTableHtml(data, mine)}
-    <p style="margin:18px 0 0;line-height:1.55">Please press <i>Mark as seen</i> on the page so the office knows the change reached you. If a change creates a clash for you, reply to this email.</p>`;
+    <p style="margin:18px 0 0;line-height:1.55">Please press <i>Mark as seen</i> on the page so the TTC knows the change reached you. If a change creates a clash for you, reply to this email.</p>`;
   const html = shell({ department, institute: opts.institute, preheader: changes[0]?.text, body, footer: `Timetable version ${versionId}. Only changes that affect your own classes are emailed to you.` });
-  const text = `Dear ${salute(faculty)},\n\nThe department timetable has been revised. ${n} change(s) affect your classes:\n${changes.map((c, i) => `  ${i + 1}. ${c.text}`).join("\n")}\n${opts.note ? `\nNote from the Timetable Office: ${opts.note}\n` : ""}\nView changes and mark as seen: ${link}\n\nTimetable version ${versionId}.`;
+  const text = `Dear ${salute(faculty)},\n\nThe university timetable has been revised. ${n} change(s) affect your classes:\n${changes.map((c, i) => `  ${i + 1}. ${c.text}`).join("\n")}\n${opts.note ? `\nNote from the TTC: ${opts.note}\n` : ""}\nView changes and mark as seen: ${link}\n\nTimetable version ${versionId}.`;
   return { subject, html, text };
 }
 
@@ -110,10 +110,10 @@ export function announcementEmail(opts: { title: string; body: string; faculty: 
   const link = personalLink(opts.siteUrl, opts.faculty.id) + `&alerts=1`;
   const body = `
     <h2 style="margin:0 0 6px;font-size:20px">${esc(opts.title)}</h2>
-    <p style="margin:0 0 14px;color:#6b7684">Notice from the Timetable Office</p>
+    <p style="margin:0 0 14px;color:#6b7684">Notice from the Time Table Committee</p>
     <p style="margin:0 0 18px;line-height:1.6;white-space:pre-wrap">${esc(opts.body)}</p>
     <p style="margin:0 0 6px">${button(link, "Open the timetable portal")}</p>${linkLine(link)}`;
-  const html = shell({ department: opts.department, institute: opts.institute, preheader: opts.body.slice(0, 120), body, footer: `Sent to faculty by the Timetable Office. Reply to this email to reach the office.` });
+  const html = shell({ department: opts.department, institute: opts.institute, preheader: opts.body.slice(0, 120), body, footer: `Sent to faculty by the Time Table Committee. Reply to this email to reach the TTC.` });
   return { subject: `Timetable notice: ${opts.title}`, html, text: `${opts.title}\n\n${opts.body}\n\nOpen the portal: ${link}` };
 }
 

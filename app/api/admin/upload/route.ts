@@ -1,6 +1,6 @@
 // Admin: upload the master Excel. Accepts either the portal's row format or the
 // department's own day x period grid workbook, which is detected and converted
-// automatically so the office can upload the file it already maintains.
+// automatically so the TTC can upload the file it already maintains.
 import { requireAdmin } from "@/lib/auth";
 import { changesByFaculty, diffDatasets, summarize } from "@/lib/diff";
 import { parseSheets, workbookToCells, workbookToSheets, type RawRow } from "@/lib/excel";

@@ -31,8 +31,8 @@ export function Admin() {
     <AdminShell>
       <div className="container" style={{ maxWidth: 440 }}>
         <div className="card">
-          <h2>Office sign-in</h2>
-          <p className="muted small">Only the timetable office signs in. Faculty open the portal without a password.</p>
+          <h2>TTC sign-in</h2>
+          <p className="muted small">Only the Time Table Committee signs in. Faculty open the portal without a password.</p>
           <form onSubmit={async (e) => { e.preventDefault(); setErr(null); try { await api("/api/admin/login", { method: "POST", body: JSON.stringify({ password: pw }) }); setPw(""); reload(); } catch (x: any) { setErr(x.message); } }} className="stack">
             <input id="admin-password" type="password" placeholder="Admin password" value={pw} onChange={(e) => setPw(e.target.value)} autoFocus />
             {err && <div className="notice bad small">{err}</div>}
@@ -71,7 +71,7 @@ export function Admin() {
 function AdminShell({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
   return (
     <>
-      <header className="topbar"><div className="topbar-inner"><div className="brand"><div className="brand-mark">TT</div><div><h1>Timetable Office</h1><div className="sub">Upload · review · publish · remind</div></div></div><div className="topbar-actions">{right}</div></div></header>
+      <header className="topbar"><div className="topbar-inner"><div className="brand"><div className="brand-mark">TT</div><div><h1>Time Table Committee</h1><div className="sub">Upload · review · publish · remind</div></div></div><div className="topbar-actions">{right}</div></div></header>
       {children}
     </>
   );
@@ -106,7 +106,7 @@ function Overview({ status, live, go }: { status: Status; live: VersionRow | nul
           <div className="stat"><div className="n">{unseen}</div><div className="l">not yet seen it</div></div>
         </div>
         {live && <div className="row" style={{ marginTop: 12 }}>
-          <span className="muted small">Download in the office layout:</span>
+          <span className="muted small">Download in the TTC layout:</span>
           <a className="btn sm" href="/api/export?kind=faculty&id=all" data-export="faculty" data-export-id="all" download>⬇ All faculty</a>
           <a className="btn sm" href="/api/export?kind=section&id=all" data-export="section" data-export-id="all" download>⬇ All sections</a>
           <a className="btn sm" href="/api/export?kind=room&id=all" data-export="room" data-export-id="all" download>⬇ All rooms</a>
@@ -497,13 +497,13 @@ function Setup({ status }: { status: Status }) {
         <dt>Morning run</dt><dd>{c.cron ? "CRON_SECRET set · Vercel Cron at 07:00 IST" : "CRON_SECRET not set"}</dd>
       </dl>
       <div className="table-wrap" style={{ marginTop: 14 }}><table><thead><tr><th>Variable</th><th>What it does</th></tr></thead><tbody>
-        <tr><td className="mono">ADMIN_PASSWORD</td><td>The one office password. Sessions last 12 hours.</td></tr>
+        <tr><td className="mono">ADMIN_PASSWORD</td><td>The one TTC admin password. Sessions last 12 hours.</td></tr>
         <tr><td className="mono">ADMIN_SECRET</td><td>Any long random string; signs the sign-in cookie.</td></tr>
         <tr><td className="mono">CRON_SECRET</td><td>Any long random string; lets Vercel's scheduler call the 07:00 reminder run. Vercel sets the matching header automatically.</td></tr>
         <tr><td className="mono">SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY</td><td>Database. Run <code>supabase/schema.sql</code> once in the Supabase SQL editor.</td></tr>
         <tr><td className="mono">SMTP_USER / SMTP_PASS</td><td>Send from the office mailbox <b>timetable2026@juitsolan.in</b>. For Google Workspace: turn on 2-step verification, create an App Password at myaccount.google.com/apppasswords, paste it as SMTP_PASS. SMTP_HOST defaults to smtp.gmail.com, port 465. No DNS changes needed.</td></tr>
         <tr><td className="mono">RESEND_API_KEY</td><td>Alternative sender: Resend, after verifying the domain there (SPF/DKIM from IT).</td></tr>
-        <tr><td className="mono">EMAIL_FROM / EMAIL_REPLY_TO</td><td>Optional. Default: "JUIT Timetable Office &lt;timetable2026@juitsolan.in&gt;".</td></tr>
+        <tr><td className="mono">EMAIL_FROM / EMAIL_REPLY_TO</td><td>Optional. Default: "JUIT Time Table Committee &lt;timetable2026@juitsolan.in&gt;".</td></tr>
         <tr><td className="mono">NEXT_PUBLIC_SITE_URL</td><td>Used in every email link and the calendar feed, e.g. https://timetable.juitsolan.ac.in</td></tr>
         <tr><td className="mono">NEXT_PUBLIC_DEPARTMENT_NAME / NEXT_PUBLIC_INSTITUTE_NAME</td><td>Shown in the header and emails.</td></tr>
       </tbody></table></div>

@@ -1,4 +1,4 @@
-# JUIT Department Timetable Portal
+# JUIT JUIT Timetable Portal
 
 One Excel upload → one permanent link for every faculty member → automatic change detection, alerts and email.
 Built for the Department of CSE, Jaypee University of Information Technology, Solan (`juitsolan.ac.in`).
@@ -49,7 +49,7 @@ Upload is **rejected** (nothing changes) when a required column is missing, a Fa
 | `EMAIL_FROM` | `JUIT Timetable <timetable@juitsolan.ac.in>` |
 | `EMAIL_REPLY_TO` | the office mailbox that should receive replies |
 | `NEXT_PUBLIC_SITE_URL` | `https://timetable.juitsolan.ac.in` |
-| `NEXT_PUBLIC_DEPARTMENT_NAME` | `Department of Computer Science & Engineering` |
+| `NEXT_PUBLIC_DEPARTMENT_NAME` | `Time Table Committee (TTC)` |
 | `NEXT_PUBLIC_INSTITUTE_NAME` | `Jaypee University of Information Technology, Solan` |
 
 ## 2a. Daily reminders, downloads and preferences
@@ -58,12 +58,12 @@ Upload is **rejected** (nothing changes) when a required column is missing, a Fa
   gets one email listing them (time, course, group, room; plus any change published overnight and
   active announcements). Nobody is emailed on a day with no classes, on a holiday the office adds,
   or outside the semester dates. Runs from Vercel Cron (`vercel.json` → `/api/cron/daily-reminder`,
-  authenticated with `CRON_SECRET`). The office can preview today's messages, send them by hand,
+  authenticated with `CRON_SECRET`). The TTC can preview today's messages, send them by hand,
   pause the run, change the hour and days, and add holidays — all in *Daily reminders*.
 * **Faculty preferences** — from their Today screen, each person can turn off the morning reminder
   or change-alert emails. Stored per faculty ID; no login needed.
 * **Excel downloads** — every view has a *Download* button, and the admin overview has *All faculty /
-  All sections / All rooms*. Files use the office's "Faculty Timetable" layout exactly: stacked 9-row
+  All sections / All rooms*. Files use the TTC's "Faculty Timetable" layout exactly: stacked 9-row
   blocks (grey header band, time row 9:00 AM…5:00 PM, MON–SAT), cells `L-CODE / BATCH / (ROOM)`
   (`P-` lab, `T-` tutorial), LUNCH in the 12:00 slot when free, `--` for the end-of-day column and
   Saturday afternoons, thin borders. Section files show faculty instead of batch; room files show

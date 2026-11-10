@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata = {
-  title: "Department Timetable — JUIT",
+  title: "JUIT Timetable — TTC",
   description: "Semester timetable portal: one link for every faculty member, always current.",
 };
 

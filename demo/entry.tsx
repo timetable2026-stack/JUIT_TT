@@ -21,7 +21,7 @@ declare const XLSX: any;
 declare const JSZip: any;
 declare const claude: any;
 const hasJSZip = () => typeof JSZip !== "undefined";
-const SITE = { url: "https://timetable.juitsolan.ac.in", department: "Department of Computer Science & Engineering", institute: "Jaypee University of Information Technology, Solan" };
+const SITE = { url: "https://timetable.juitsolan.ac.in", department: "Time Table Committee (TTC)", institute: "Jaypee University of Information Technology, Solan" };
 const DB_KEY = "tt_demo_db_v2";
 const ADMIN_PW = "admin";
 const TERM = { start: "2027-01-04", end: "2027-06-04", year: "2026-27" };
@@ -91,7 +91,7 @@ function sheetsFromUpload(bytes: Uint8Array, live: Version | null) {
     const term = live?.data.semesters[0] ? { start: live.data.semesters[0].startDate, end: live.data.semesters[0].endDate, year: live.data.semesters[0].academicYear } : TERM;
     const g = gridToSheets(cells, term);
     const merged = mergeFacultyDetails(g.sheets.Faculty ?? [], live?.data.faculty ?? []);
-    // Preview only: names and departments taken from the office's own faculty timetable export.
+    // Preview only: names and departments taken from the TTC's own faculty timetable export.
     const known = facultyNames as Record<string, [string, string]>;
     g.sheets.Faculty = merged.rows.map((r: any) => { const k = known[String(r["Faculty ID"])]; const named = k && (!r["Full name"] || r["Full name"] === r["Faculty ID"]) ? { ...r, "Full name": k[0], Department: r.Department || k[1] } : r; return named["Faculty ID"] === "GVN" ? { ...named, Email: named.Email || "gaurav.negi@juitsolan.in" } : named; });
     sheets = g.sheets;
@@ -235,7 +235,7 @@ function DemoBar({ onChange }: { onChange: () => void }) {
     const db = load();
     const { sheets } = sheetsFromUpload(new TextEncoder().encode(JSON.stringify(gridSource)), null);
     const p = parseSheets(sheets);
-    publish(db, p.data, { issues: p.issues, fileName: "Timetable_Jan_Jun_2027.xlsx", note: "Timetable for January–June 2027 published. Please check your classes and report any clash to the office.", sendEmail: true });
+    publish(db, p.data, { issues: p.issues, fileName: "Timetable_Jan_Jun_2027.xlsx", note: "Timetable for January–June 2027 published. Please check your classes and report any clash to the TTC.", sendEmail: true });
     save(db); onChange(); toast("Published from the original grid-format master file.");
   };
   const reset = () => { localStorage.removeItem(DB_KEY); try { localStorage.removeItem("tt_fid"); } catch {} (window as any).__previewDate = undefined; onChange(); };
@@ -243,7 +243,7 @@ function DemoBar({ onChange }: { onChange: () => void }) {
     <div className="demo-bar">
       <div><b>Preview — real JUIT data, Jan–Jun 2027.</b> Runs in your browser and saves to this device only; the deployed site shares one database and sends real email.</div>
       <div className="row">
-        <button className="btn sm" onClick={() => (location.hash = isAdmin ? "#portal" : "#admin")}>{isAdmin ? "→ Faculty portal" : "→ Office admin (password: admin)"}</button>
+        <button className="btn sm" onClick={() => (location.hash = isAdmin ? "#portal" : "#admin")}>{isAdmin ? "→ Faculty portal" : "→ TTC admin (password: admin)"}</button>
         <button className="btn sm primary" onClick={publishGrid}>1 · Publish the timetable</button>
         <button className="btn sm" onClick={() => simulateUpload(JSON.stringify(gridSource), "Timetable_Jan_Jun_2027.xlsx")}>2 · Upload the original master file</button>
         <button className="btn sm" onClick={() => simulateUpload(JSON.stringify(sampleV2), "Timetable_Jan_Jun_2027_rev2.xlsx")}>3 · Upload a revised sheet (25 changes)</button>

@@ -57,8 +57,8 @@ export function Portal() {
       <div className="container"><div className="card empty">
         <div className="empty-art">📅</div>
         <h2>No timetable published yet</h2>
-        <p className="muted">When the department office publishes the semester timetable, this page fills in on its own and every faculty member can open it from this same link.</p>
-        <a className="btn" href="/admin">Office sign-in</a>
+        <p className="muted">When the Time Table Committee publishes the semester timetable, this page fills in on its own and every faculty member can open it from this same link.</p>
+        <a className="btn" href="/admin">TTC sign-in</a>
       </div></div>
     </Shell>
   );
@@ -102,7 +102,7 @@ export function Portal() {
 
         <div className="footer">
           Version {payload.version.id} · published {fmtDate(payload.version.publishedAt)} · {payload.site.institute}
-          <br />Only the department office can publish changes. If something looks wrong, reply to the timetable email.
+          <br />Only the Time Table Committee can publish changes. If something looks wrong, reply to the timetable email.
         </div>
       </div>
       {picking && <FacultyPicker faculty={data.faculty} onPick={pick} onClose={me ? () => setPicking(false) : undefined} />}
@@ -136,7 +136,7 @@ function Shell({ children, site, right }: { children: React.ReactNode; site?: Pu
         <div className="topbar-inner">
           <div className="brand">
             <div className="brand-mark">TT</div>
-            <div><h1>Department Timetable</h1><div className="sub">{site?.department ?? "JUIT Solan"}</div></div>
+            <div><h1>JUIT Timetable</h1><div className="sub">{site?.department ?? "JUIT Solan"}</div></div>
           </div>
           <div className="topbar-actions">{right}</div>
         </div>
@@ -247,7 +247,7 @@ function ReminderCard({ me, prefs, payload, onSaved }: { me: Faculty; prefs?: Pr
   return (
     <div className="card" id="reminders">
       <h3>Email reminders</h3>
-      {!me.email && <div className="notice warn small" style={{ marginBottom: 8 }}>No email address is on file for you. Ask the timetable office to add it; your settings below take effect once it is.</div>}
+      {!me.email && <div className="notice warn small" style={{ marginBottom: 8 }}>No email address is on file for you. Ask the Time Table Committee to add it; your settings below take effect once it is.</div>}
       {me.email && <p className="muted small" style={{ margin: "0 0 8px" }}>Sent to <b>{me.email}</b>.</p>}
       <label className="toggle-row">
         <span><b>Morning reminder</b><small>Your classes for the day, at {hour} on teaching days. Nothing is sent on days you have no classes.</small></span>
@@ -291,7 +291,7 @@ function MyWeek({ me, slots, payload, onCell }: { me: Faculty; slots: Slot[]; pa
         <div className="row"><span className="muted small">{slots.length} periods{changed.size > 0 ? ` · ${changed.size} changed in the latest publish (outlined)` : ""}</span><DownloadButton kind="faculty" id={me.id} label="Download my timetable" /></div>
       </div>
       <TimetableGrid slots={slots} periods={payload.data!.periods} mode="faculty" changed={changed} onCell={onCell} />
-      <p className="muted small" style={{ marginTop: 8 }}>Tap a class for room, co-faculty and notes. Blue = lecture, green = lab, amber = tutorial. The download has the same grid plus the office's one-row “Faculty view” format.</p>
+      <p className="muted small" style={{ marginTop: 8 }}>Tap a class for room, co-faculty and notes. Blue = lecture, green = lab, amber = tutorial. The download has the same grid plus the TTC's one-row “Faculty view” format.</p>
     </div>
   );
 }
@@ -384,7 +384,7 @@ function Alerts({ payload, me, seen, onAck }: { payload: PublicPayload; me: Facu
               <div><b>Timetable version {p.id}</b> <span className="muted small">· {fmtDate(p.publishedAt)} · {p.changes.length === 0 ? "first publish of the semester" : `${p.changes.length} change${p.changes.length > 1 ? "s" : ""}${filter === "mine" ? `, ${p.shown.length} affecting you` : ""}`}</span></div>
               {me && mineAffected && (seen.has(p.id) ? <span className="pill good">Seen</span> : <button className="btn sm primary" onClick={() => onAck(p.id)}>Mark as seen</button>)}
             </div>
-            {p.note && <div className="alert-note"><b>Office note:</b> {p.note}</div>}
+            {p.note && <div className="alert-note"><b>TTC note:</b> {p.note}</div>}
             {p.shown.slice(0, 60).map((c) => <ChangeRow key={c.id} c={c} mine={!!me && c.affectedFacultyIds.includes(me.id)} />)}
             {p.shown.length > 60 && <div className="alert-item muted small">…and {p.shown.length - 60} more.</div>}
           </div>

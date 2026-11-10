@@ -1,4 +1,4 @@
-// Excel downloads in the office's own "Faculty Timetable" layout: one sheet of
+// Excel downloads in the TTC's own "Faculty Timetable" layout: one sheet of
 // stacked 9-row blocks (header · time row · MON–SAT), cells written as
 // "L-CODE / BATCH / (ROOM)", LUNCH in the 12:00 slot when free, "--" for the
 // end-of-day column and Saturday afternoons, thin borders, grey header band.

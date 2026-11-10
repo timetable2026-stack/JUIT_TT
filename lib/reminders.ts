@@ -80,7 +80,7 @@ export function dailyReminderEmail(o: ReminderOptions): EmailContent {
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:680px;background:#ffffff;border-radius:12px;overflow:hidden;font-family:Arial,Helvetica,sans-serif;color:#1a1d21">
     <tr><td style="background:#1f3a5f;color:#fff;padding:14px 24px"><div style="font-size:12px;letter-spacing:.06em;text-transform:uppercase;opacity:.85">${esc(o.department)}</div><div style="font-size:16px;font-weight:bold;margin-top:2px">Today's classes</div></td></tr>
     <tr><td style="padding:22px 24px">${body}</td></tr>
-    <tr><td style="padding:12px 24px;border-top:1px solid #e3e7ec;font-size:12px;color:#6b7684;line-height:1.5">Daily reminder from the Timetable Office. <a href="${link}&reminders=1" style="color:#1f3a5f">Turn this off</a> · <a href="${icsLink(o.siteUrl, o.faculty.id)}" style="color:#1f3a5f">Calendar subscription</a></td></tr>
+    <tr><td style="padding:12px 24px;border-top:1px solid #e3e7ec;font-size:12px;color:#6b7684;line-height:1.5">Daily reminder from the Time Table Committee. <a href="${link}&reminders=1" style="color:#1f3a5f">Turn this off</a> · <a href="${icsLink(o.siteUrl, o.faculty.id)}" style="color:#1f3a5f">Calendar subscription</a></td></tr>
   </table></td></tr></table></body></html>`;
 
   const text = `Good morning, ${firstName(o.faculty.name)}\n${o.dateLabel} — ${slots.length} class(es) today\n\n`

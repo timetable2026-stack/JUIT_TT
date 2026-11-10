@@ -1,6 +1,6 @@
 // A small .xlsx writer with cell styles (fonts, fills, borders, alignment, row
 // heights, column widths, freeze panes). The community SheetJS build cannot write
-// styles, and the office's timetable format depends on them, so the workbook XML
+// styles, and the TTC's timetable format depends on them, so the workbook XML
 // is produced here and zipped with JSZip (Node and browser alike).
 
 export interface CellStyle {

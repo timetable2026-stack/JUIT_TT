@@ -8,8 +8,8 @@ export function siteConfig() {
   const url = (explicit && explicit !== "http://localhost:3000" ? explicit : vercelProd ? `https://${vercelProd}` : vercelThis ? `https://${vercelThis}` : "http://localhost:3000").replace(/\/$/, "");
   return {
     url,
-    department: process.env.NEXT_PUBLIC_DEPARTMENT_NAME || "Department of Computer Science & Engineering",
+    department: process.env.NEXT_PUBLIC_DEPARTMENT_NAME || "Time Table Committee (TTC)",
     institute: process.env.NEXT_PUBLIC_INSTITUTE_NAME || "Jaypee University of Information Technology, Solan",
-    office: "Timetable Office",
+    office: "Time Table Committee",
   };
 }
