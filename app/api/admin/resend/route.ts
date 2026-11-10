@@ -22,8 +22,8 @@ export async function POST(req: Request) {
   const items = targets.filter((f) => f.email && !seen.has(f.id)).map((f) => ({
     to: { facultyId: f.id, email: f.email, name: f.name },
     content: v.changes.length
-      ? changeEmail({ data: v.data, faculty: f, changes: byFac.get(f.id)!, siteUrl: site.url, department: site.department, note: v.note, versionId: v.id })
-      : firstPublishEmail({ data: v.data, faculty: f, siteUrl: site.url, department: site.department, note: v.note, semesterNames: v.data.semesters.map((s) => s.name) }),
+      ? changeEmail({ data: v.data, faculty: f, changes: byFac.get(f.id)!, siteUrl: site.url, department: site.department, institute: site.institute, note: v.note, versionId: v.id })
+      : firstPublishEmail({ data: v.data, faculty: f, siteUrl: site.url, department: site.department, institute: site.institute, note: v.note, semesterNames: v.data.semesters.map((s) => s.name) }),
   }));
   const log = await sendBatch("reminder", v.id, items);
   await store.addEmailLog(log);

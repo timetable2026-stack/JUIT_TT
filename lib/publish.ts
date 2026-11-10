@@ -39,13 +39,13 @@ export async function publishDataset(opts: { data: Dataset; note?: string; fileN
       const semesterNames = opts.data.semesters.map((s) => s.name);
       for (const f of opts.data.faculty) {
         if (!f.email || !wantsEmail(f.id)) continue;
-        items.push({ to: { facultyId: f.id, email: f.email, name: f.name }, content: firstPublishEmail({ data: opts.data, faculty: f, siteUrl: site.url, department: site.department, note: opts.note, semesterNames }) });
+        items.push({ to: { facultyId: f.id, email: f.email, name: f.name }, content: firstPublishEmail({ data: opts.data, faculty: f, siteUrl: site.url, department: site.department, institute: site.institute, note: opts.note, semesterNames }) });
       }
     } else {
       for (const [fid, mine] of changesByFaculty(changes)) {
         const f = facById.get(fid) ?? live.data.faculty.find((x) => x.id === fid);
         if (!f?.email || !wantsEmail(f.id)) continue;
-        items.push({ to: { facultyId: f.id, email: f.email, name: f.name }, content: changeEmail({ data: opts.data, faculty: f, changes: mine, siteUrl: site.url, department: site.department, note: opts.note, versionId: version.id }) });
+        items.push({ to: { facultyId: f.id, email: f.email, name: f.name }, content: changeEmail({ data: opts.data, faculty: f, changes: mine, siteUrl: site.url, department: site.department, institute: site.institute, note: opts.note, versionId: version.id }) });
       }
     }
   }
