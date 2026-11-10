@@ -1,6 +1,6 @@
 // Admin: is the session valid, and what is configured on the server.
 import { isAdmin } from "@/lib/auth";
-import { emailConfigured } from "@/lib/email";
+import { emailConfigured, emailFrom, emailTransport } from "@/lib/email";
 import { siteConfig } from "@/lib/site";
 import { getStore, storeKind } from "@/lib/store";
 
@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   ]);
   return Response.json({
     admin: true,
-    config: { store: storeKind(), email: emailConfigured(), from: process.env.EMAIL_FROM ?? null, site: siteConfig(), cron: Boolean(process.env.CRON_SECRET) },
+    config: { store: storeKind(), email: emailConfigured(), transport: emailTransport(), from: emailFrom(), site: siteConfig(), cron: Boolean(process.env.CRON_SECRET) },
     versions: versions.map((v) => ({ id: v.id, status: v.status, createdAt: v.createdAt, publishedAt: v.publishedAt, note: v.note, fileName: v.fileName, summary: v.summary, changes: v.changes, issues: v.issues, faculty: v.data.faculty, semesters: v.data.semesters.map((s) => s.name) })),
     emailLog, announcements, acks, prefs, settings,
   });

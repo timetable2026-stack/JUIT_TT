@@ -5,7 +5,7 @@ import { ChangeRow } from "./Portal";
 import { TimetableGrid, changedKeys, fmtDate } from "./shared";
 
 interface VersionRow { id: number; status: string; createdAt: string; publishedAt?: string; note?: string; fileName?: string; summary: { slots: number; faculty: number; changes: number; affectedFaculty: number }; changes: Change[]; issues: Issue[]; faculty: Faculty[]; semesters: string[] }
-interface Status { admin: boolean; config?: { store: string; email: boolean; from: string | null; cron: boolean; site: { url: string; department: string; institute: string } }; versions?: VersionRow[]; emailLog?: EmailLogEntry[]; announcements?: Announcement[]; acks?: Ack[]; prefs?: Prefs[]; settings?: Settings }
+interface Status { admin: boolean; config?: { store: string; email: boolean; transport?: string; from: string | null; cron: boolean; site: { url: string; department: string; institute: string } }; versions?: VersionRow[]; emailLog?: EmailLogEntry[]; announcements?: Announcement[]; acks?: Ack[]; prefs?: Prefs[]; settings?: Settings }
 interface Conversion { used: boolean; groups: string[]; report: { sheet: string; day: string; classes: number }[]; notes: string[]; carriedFaculty: number }
 interface UploadResult { ok: boolean; draftId: number | null; fileName: string; issues: Issue[]; changes: Change[]; byFaculty: Record<string, string[]>; summary: { slots: number; faculty: number; changes: number; affectedFaculty: number } | null; isFirstPublish: boolean; conversion: Conversion | null; data: Dataset | null; error?: string }
 
@@ -86,7 +86,7 @@ function Overview({ status, live, go }: { status: Status; live: VersionRow | nul
     { ok: true, label: "Website is live", sub: c.site.url },
     { ok: !!live, label: live ? `Timetable published (version ${live.id})` : "Publish the first timetable", sub: live ? `${live.summary.slots} classes · ${live.summary.faculty} faculty` : "Upload the master Excel — the original grid file works as-is", act: live ? undefined : () => go("upload") },
     { ok: c.store === "supabase", label: c.store === "supabase" ? "Database connected" : c.store === "ephemeral" ? "Database not connected — data is temporary" : "Database: local file (development only)", sub: c.store === "supabase" ? "Supabase" : c.store === "ephemeral" ? "Everything published is lost on the next deploy. Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY, then redeploy." : "Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY before going live", act: c.store === "supabase" ? undefined : () => go("settings") },
-    { ok: c.email, label: c.email ? `Email on · ${c.from}` : "Email not configured", sub: c.email ? "Change alerts and morning reminders go out" : "Set RESEND_API_KEY and EMAIL_FROM; until then emails are logged as skipped", act: c.email ? undefined : () => go("settings") },
+    { ok: c.email, label: c.email ? `Email on · ${c.from}` : "Email not configured", sub: c.email ? `Sent ${c.transport === "smtp" ? "from the office mailbox" : "via Resend"}; change alerts and morning reminders go out` : "Set SMTP_USER and SMTP_PASS for the office mailbox; until then emails are logged as skipped", act: () => go("settings") },
     { ok: noEmail === 0 && !!live, label: live ? (noEmail === 0 ? "Every faculty member has an email" : `${noEmail} faculty without an email address`) : "Faculty emails", sub: noEmail ? "Fill the Email column of the Faculty sheet and re-upload, or edit People" : "Nobody will miss an alert", act: noEmail ? () => go("people") : undefined },
     { ok: c.cron, label: c.cron ? "Morning reminders scheduled" : "Morning reminder schedule", sub: c.cron ? `Daily at ${String(status.settings?.reminderHour ?? 7).padStart(2, "0")}:00 IST` : "Set CRON_SECRET in Vercel so the 07:00 run can authenticate", act: c.cron ? () => go("reminders") : () => go("settings") },
   ];
@@ -479,15 +479,21 @@ function EmailLog({ log }: { log: EmailLogEntry[] }) {
 // ---------------------------------------------------------------- Setup
 function Setup({ status }: { status: Status }) {
   const c = status.config!;
+  const [to, setTo] = useState("gaurav.negi@juitsolan.in"); const [msg, setMsg] = useState<string | null>(null); const [busy, setBusy] = useState(false);
+  const test = async () => { setBusy(true); setMsg(null); try { const r = await api<any>("/api/admin/test-email", { method: "POST", body: JSON.stringify({ to }) }); setMsg(r.ok ? `Sent via ${r.transport}. Check the inbox (and spam) of ${to}.` : `Not sent: ${r.error}`); } catch (e: any) { setMsg(e.message); } finally { setBusy(false); } };
   return (
     <div className="card">
       <h2>Setup</h2>
+      <div className="notice info" style={{ marginBottom: 12 }}>
+        <b>Test email.</b> <span className="small">Sends one message using the current settings.</span>
+        <div className="row" style={{ marginTop: 6 }}><input type="text" value={to} onChange={(e) => setTo(e.target.value)} style={{ width: 280 }} placeholder="address" /><button className="btn sm primary" disabled={busy || !c.email} onClick={test}>{busy ? "Sending…" : "Send test"}</button>{!c.email && <span className="muted small">Configure SMTP_USER and SMTP_PASS first.</span>}{msg && <span className="small">{msg}</span>}</div>
+      </div>
       <p className="muted small">These are set once in Vercel → Project → Settings → Environment Variables, then redeploy. The website reads them on start.</p>
       <dl className="kv">
         <dt>Portal URL</dt><dd>{c.site.url}</dd>
         <dt>Department</dt><dd>{c.site.department}</dd>
         <dt>Database</dt><dd>{c.store}</dd>
-        <dt>Email</dt><dd>{c.email ? `Resend · from ${c.from}` : "off"}</dd>
+        <dt>Email</dt><dd>{c.email ? `${c.transport === "smtp" ? "Office mailbox (SMTP)" : "Resend"} · from ${c.from}` : `off · will send as ${c.from}`}</dd>
         <dt>Morning run</dt><dd>{c.cron ? "CRON_SECRET set · Vercel Cron at 07:00 IST" : "CRON_SECRET not set"}</dd>
       </dl>
       <div className="table-wrap" style={{ marginTop: 14 }}><table><thead><tr><th>Variable</th><th>What it does</th></tr></thead><tbody>
@@ -495,7 +501,9 @@ function Setup({ status }: { status: Status }) {
         <tr><td className="mono">ADMIN_SECRET</td><td>Any long random string; signs the sign-in cookie.</td></tr>
         <tr><td className="mono">CRON_SECRET</td><td>Any long random string; lets Vercel's scheduler call the 07:00 reminder run. Vercel sets the matching header automatically.</td></tr>
         <tr><td className="mono">SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY</td><td>Database. Run <code>supabase/schema.sql</code> once in the Supabase SQL editor.</td></tr>
-        <tr><td className="mono">RESEND_API_KEY / EMAIL_FROM / EMAIL_REPLY_TO</td><td>Email. Verify juitsolan.ac.in in Resend with the SPF and DKIM records it gives you.</td></tr>
+        <tr><td className="mono">SMTP_USER / SMTP_PASS</td><td>Send from the office mailbox <b>timetable2026@juitsolan.in</b>. For Google Workspace: turn on 2-step verification, create an App Password at myaccount.google.com/apppasswords, paste it as SMTP_PASS. SMTP_HOST defaults to smtp.gmail.com, port 465. No DNS changes needed.</td></tr>
+        <tr><td className="mono">RESEND_API_KEY</td><td>Alternative sender: Resend, after verifying the domain there (SPF/DKIM from IT).</td></tr>
+        <tr><td className="mono">EMAIL_FROM / EMAIL_REPLY_TO</td><td>Optional. Default: "JUIT Timetable Office &lt;timetable2026@juitsolan.in&gt;".</td></tr>
         <tr><td className="mono">NEXT_PUBLIC_SITE_URL</td><td>Used in every email link and the calendar feed, e.g. https://timetable.juitsolan.ac.in</td></tr>
         <tr><td className="mono">NEXT_PUBLIC_DEPARTMENT_NAME / NEXT_PUBLIC_INSTITUTE_NAME</td><td>Shown in the header and emails.</td></tr>
       </tbody></table></div>

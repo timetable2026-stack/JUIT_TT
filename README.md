@@ -30,7 +30,7 @@ Upload is **rejected** (nothing changes) when a required column is missing, a Fa
 ## 2. Deploy to Vercel (about 20 minutes)
 
 1. **Database** — create a free project at [supabase.com](https://supabase.com). In *SQL editor*, paste and run `supabase/schema.sql`. Copy *Project URL* and the *service_role* key from *Settings → API*.
-2. **Email** — create an account at [resend.com](https://resend.com), add the domain `juitsolan.ac.in`, and give the SPF/DKIM DNS records it shows to JUIT IT to add. Create an API key. (Until this is done the site works fully; emails are logged as "skipped".)
+2. **Email** — simplest: send from the office mailbox itself. In the Google account of `timetable2026@juitsolan.in`, turn on 2-step verification, then create an App Password (myaccount.google.com/apppasswords) and set it as `SMTP_PASS` with `SMTP_USER=timetable2026@juitsolan.in`. Test from Admin → Setup → *Send test*. (Alternative: Resend with the domain verified. Until either is done the site works fully; emails are logged as "skipped".)
 3. **Code** — push this folder to a GitHub repository (private is fine).
 4. **Vercel** — [vercel.com/new](https://vercel.com/new) → import the repo → framework is detected as Next.js. Before *Deploy*, add the environment variables below. Deploy.
 5. **Domain** — in Vercel → *Settings → Domains* add `timetable.juitsolan.ac.in`; give the CNAME it shows to IT. Set `NEXT_PUBLIC_SITE_URL` to that address and redeploy.

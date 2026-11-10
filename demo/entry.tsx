@@ -93,7 +93,7 @@ function sheetsFromUpload(bytes: Uint8Array, live: Version | null) {
     const merged = mergeFacultyDetails(g.sheets.Faculty ?? [], live?.data.faculty ?? []);
     // Preview only: names and departments taken from the office's own faculty timetable export.
     const known = facultyNames as Record<string, [string, string]>;
-    g.sheets.Faculty = merged.rows.map((r: any) => { const k = known[String(r["Faculty ID"])]; return k && (!r["Full name"] || r["Full name"] === r["Faculty ID"]) ? { ...r, "Full name": k[0], Department: r.Department || k[1] } : r; });
+    g.sheets.Faculty = merged.rows.map((r: any) => { const k = known[String(r["Faculty ID"])]; const named = k && (!r["Full name"] || r["Full name"] === r["Faculty ID"]) ? { ...r, "Full name": k[0], Department: r.Department || k[1] } : r; return named["Faculty ID"] === "GVN" ? { ...named, Email: named.Email || "gaurav.negi@juitsolan.in" } : named; });
     sheets = g.sheets;
     conversion = { used: true, groups: g.groups, report: g.report, notes: g.notes.slice(0, 40), carriedFaculty: merged.carried };
   }
