@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
-  const facultyId = String(body.facultyId ?? "").toUpperCase();
+  const facultyId = String(body.facultyId ?? "").trim();
   if (!facultyId) return Response.json({ error: "facultyId required" }, { status: 400 });
   const store = getStore();
   const live = await store.getPublished();

@@ -62,10 +62,13 @@ Upload is **rejected** (nothing changes) when a required column is missing, a Fa
   pause the run, change the hour and days, and add holidays — all in *Daily reminders*.
 * **Faculty preferences** — from their Today screen, each person can turn off the morning reminder
   or change-alert emails. Stored per faculty ID; no login needed.
-* **Excel downloads** — every view has a *Download* button (`/api/export?kind=faculty|class|room&id=…`).
-  The workbook has three sheets: a readable weekly grid, the office's one-row *Faculty view* format
-  (Faculty · Dept · Periods/wk · MON P1 … SAT P8, cells as `CODE/BATCH/ROOM`) that pastes back into
-  the master, and a plain list.
+* **Excel downloads** — every view has a *Download* button, and the admin overview has *All faculty /
+  All sections / All rooms*. Files use the office's "Faculty Timetable" layout exactly: stacked 9-row
+  blocks (grey header band, time row 9:00 AM…5:00 PM, MON–SAT), cells `L-CODE / BATCH / (ROOM)`
+  (`P-` lab, `T-` tutorial), LUNCH in the 12:00 slot when free, `--` for the end-of-day column and
+  Saturday afternoons, thin borders. Section files show faculty instead of batch; room files show
+  faculty instead of room. Route: `/api/export?kind=faculty|section|room&id=<code|batch|room|all>`.
+* **Faculty codes are case-sensitive** (`ASK` and `Ask` are different people), exactly as in the master.
 
 ## 2b. Loading the existing JUIT master timetable (script alternative)
 

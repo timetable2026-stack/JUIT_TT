@@ -100,9 +100,9 @@ export function TimetableGrid({ slots, periods, mode, changed, onCell, showDays 
 
 /** Excel download of a faculty member's, class's or room's week, in the department's own cell convention.
  *  A plain link on the deployed site; the preview build intercepts `data-export` and builds the file in the browser. */
-export function DownloadButton({ kind, id, label = "Download" }: { kind: "faculty" | "class" | "room"; id: string; label?: string }) {
+export function DownloadButton({ kind, id, label = "Download", primary = false }: { kind: "faculty" | "section" | "room"; id: string; label?: string; primary?: boolean }) {
   const href = `/api/export?kind=${kind}&id=${encodeURIComponent(id)}`;
-  return <a className="btn sm" href={href} data-export={kind} data-export-id={id} download title="Excel: weekly grid, office row format and a plain list">⬇ {label}</a>;
+  return <a className={`btn sm ${primary ? "primary" : ""}`} href={href} data-export={kind} data-export-id={id} download title="Excel in the office's timetable layout">⬇ {label}</a>;
 }
 
 export function SlotModal({ slot, data, onClose }: { slot: Slot; data: Dataset; onClose: () => void }) {

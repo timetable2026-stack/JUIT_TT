@@ -26,6 +26,7 @@ body { padding-left: max(0px, env(safe-area-inset-left, 0px)); padding-right: ma
 #toast.show { opacity: 1; transform: translate(-50%, 0); }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <div id="root"></div>
 <script>${js}</script>`;
 // Standalone copy with a full skeleton for opening from disk.

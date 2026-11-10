@@ -15,7 +15,7 @@ async function handlePOST(req: Request) {
   const title = String(body.title ?? "").trim().slice(0, 200);
   const text = String(body.body ?? "").trim().slice(0, 5000);
   if (!title || !text) return Response.json({ error: "Title and body are required" }, { status: 400 });
-  const audience: Announcement["audience"] = body.audience?.kind === "semester" ? { kind: "semester", semester: String(body.audience.semester) } : body.audience?.kind === "faculty" ? { kind: "faculty", ids: (body.audience.ids ?? []).map((s: string) => String(s).toUpperCase()) } : { kind: "all" };
+  const audience: Announcement["audience"] = body.audience?.kind === "semester" ? { kind: "semester", semester: String(body.audience.semester) } : body.audience?.kind === "faculty" ? { kind: "faculty", ids: (body.audience.ids ?? []).map((s: string) => String(s).trim()) } : { kind: "all" };
   const store = getStore();
   const ann = await store.createAnnouncement({ createdAt: new Date().toISOString(), title, body: text, audience, emailed: Boolean(body.email), expiresAt: body.expiresAt ? String(body.expiresAt) : undefined });
 

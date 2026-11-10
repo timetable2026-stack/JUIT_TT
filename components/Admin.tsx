@@ -105,6 +105,12 @@ function Overview({ status, live, go }: { status: Status; live: VersionRow | nul
           <div className="stat"><div className="n">{live?.summary.changes ?? 0}</div><div className="l">changes in last publish</div></div>
           <div className="stat"><div className="n">{unseen}</div><div className="l">not yet seen it</div></div>
         </div>
+        {live && <div className="row" style={{ marginTop: 12 }}>
+          <span className="muted small">Download in the office layout:</span>
+          <a className="btn sm" href="/api/export?kind=faculty&id=all" data-export="faculty" data-export-id="all" download>⬇ All faculty</a>
+          <a className="btn sm" href="/api/export?kind=section&id=all" data-export="section" data-export-id="all" download>⬇ All sections</a>
+          <a className="btn sm" href="/api/export?kind=room&id=all" data-export="room" data-export-id="all" download>⬇ All rooms</a>
+        </div>}
         <div className="row" style={{ marginTop: 12 }}>
           <button className="btn" onClick={() => go("announce")}>Post an announcement</button>
           <button className="btn" onClick={() => go("reminders")}>Today's reminders</button>

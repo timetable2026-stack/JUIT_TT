@@ -162,7 +162,7 @@ export function parseSheets(sheets: Partial<RawSheets>): ParseResult {
   if (fac.length && !hasColumn(fac, COLS.email)) err("Faculty", 'Column "Email" is missing.');
   fac.forEach((r, i) => {
     const row = i + 2;
-    const id = pick(r, COLS.id).toUpperCase();
+    const id = pick(r, COLS.id);
     const name = pick(r, COLS.name);
     const email = pick(r, COLS.email).toLowerCase();
     if (!id && !name && !email) return; // blank row
@@ -253,7 +253,7 @@ export function parseSheets(sheets: Partial<RawSheets>): ParseResult {
     const period = Number(periodRaw);
     const typeRaw = pick(r, COLS.type);
     const type = normType(typeRaw);
-    const facultyIds = pick(r, COLS.facultyId).split(/[;,/&+]+/).map((s) => s.trim().toUpperCase()).filter(Boolean);
+    const facultyIds = pick(r, COLS.facultyId).split(/[;,/&+]+/).map((s) => s.trim()).filter(Boolean);
     const room = pick(r, COLS.room);
     const section = pick(r, COLS.section);
     const batch = pick(r, COLS.batch) || undefined;
@@ -268,7 +268,10 @@ export function parseSheets(sheets: Partial<RawSheets>): ParseResult {
     if (!subjectCode) { err("Timetable", "Subject code is empty.", row, "Subject code"); bad = true; }
     if (!type) { err("Timetable", `Type "${typeRaw}" is not Lecture, Lab, Tutorial, Seminar or Project.`, row, "Type"); bad = true; }
     if (facultyIds.length === 0) { err("Timetable", "Faculty ID is empty.", row, "Faculty ID"); bad = true; }
-    for (const fid of facultyIds) if (faculty.length && !facById.has(fid) && !PLACEHOLDER_FACULTY.has(fid)) { err("Timetable", `Faculty ID ${fid} is not in the Faculty sheet.`, row, "Faculty ID"); bad = true; }
+    for (const fid of facultyIds) if (faculty.length && !facById.has(fid) && !PLACEHOLDER_FACULTY.has(fid.toUpperCase())) {
+      const near = faculty.filter((f) => f.id.toLowerCase() === fid.toLowerCase()).map((f) => f.id);
+      err("Timetable", `Faculty ID ${fid} is not in the Faculty sheet${near.length ? ` (did you mean ${near.join(" or ")}? codes are case-sensitive)` : ""}.`, row, "Faculty ID"); bad = true;
+    }
     if (!room) { err("Timetable", "Room is empty.", row, "Room"); bad = true; }
     if (bad || !day || !type) return;
 
@@ -291,7 +294,7 @@ export function parseSheets(sheets: Partial<RawSheets>): ParseResult {
     byKey.set(slot.key, slot);
 
     for (const fid of facultyIds) {
-      if (PLACEHOLDER_FACULTY.has(fid)) continue;
+      if (PLACEHOLDER_FACULTY.has(fid.toUpperCase())) continue;
       const k = `${fid}|${day}|${period}`;
       const other = facBusy.get(k);
       if (other && !(other.subjectCode === subjectCode && other.room === room)) {

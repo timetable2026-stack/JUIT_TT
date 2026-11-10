@@ -9,14 +9,18 @@ import { parseSheets, templateSheets, workbookToCells, workbookToSheets } from "
 import { changesByFaculty, diffDatasets, summarize } from "../lib/diff";
 import { icsForFaculty } from "../lib/format";
 import { gridToSheets, looksLikeGrid, mergeFacultyDetails } from "../lib/grid";
-import { buildExport, toWorkbook, type ExportKind } from "../lib/exportGrid";
+import { buildExport, type ExportKind } from "../lib/exportGrid";
+import { writeXlsx } from "../lib/xlsxWriter";
+import facultyNames from "./faculty-names.json";
 import { dailyReminderEmail, istNow, slotsOnDay, withinTerm } from "../lib/reminders";
 import { DEFAULT_SETTINGS, type Ack, type Announcement, type EmailLogEntry, type Prefs, type PublicPayload, type Settings, type Version } from "../lib/types";
 import gridSource from "./grid-source.json";
 import sampleV2 from "./sample-v2.json";
 
 declare const XLSX: any;
+declare const JSZip: any;
 declare const claude: any;
+const hasJSZip = () => typeof JSZip !== "undefined";
 const SITE = { url: "https://timetable.juitsolan.ac.in", department: "Department of Computer Science & Engineering", institute: "Jaypee University of Information Technology, Solan" };
 const DB_KEY = "tt_demo_db_v2";
 const ADMIN_PW = "admin";
@@ -87,21 +91,26 @@ function sheetsFromUpload(bytes: Uint8Array, live: Version | null) {
     const term = live?.data.semesters[0] ? { start: live.data.semesters[0].startDate, end: live.data.semesters[0].endDate, year: live.data.semesters[0].academicYear } : TERM;
     const g = gridToSheets(cells, term);
     const merged = mergeFacultyDetails(g.sheets.Faculty ?? [], live?.data.faculty ?? []);
-    g.sheets.Faculty = merged.rows; sheets = g.sheets;
+    // Preview only: names and departments taken from the office's own faculty timetable export.
+    const known = facultyNames as Record<string, [string, string]>;
+    g.sheets.Faculty = merged.rows.map((r: any) => { const k = known[String(r["Faculty ID"])]; return k && (!r["Full name"] || r["Full name"] === r["Faculty ID"]) ? { ...r, "Full name": k[0], Department: r.Department || k[1] } : r; });
+    sheets = g.sheets;
     conversion = { used: true, groups: g.groups, report: g.report, notes: g.notes.slice(0, 40), carriedFaculty: merged.carried };
   }
   return { sheets, conversion };
 }
 
-async function saveWorkbook(fileName: string, wb: any) {
-  if (!hasXLSX()) { toast("The spreadsheet library did not load in this preview, so Excel files cannot be built here. The deployed site serves them directly."); return; }
-  const buf: ArrayBuffer = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+async function saveBytes(fileName: string, buf: ArrayBuffer | Uint8Array) {
   try {
     const dl = typeof claude !== "undefined" && claude?.use ? await claude.use("downloads") : null;
     if (dl) { await dl.save({ filename: fileName, data: buf }); toast(`Saved ${fileName}`); return; }
   } catch (e: any) { if (e?.code === "declined") return; }
   // Outside the claude.ai frame (e.g. the standalone file), a normal download works.
-  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([buf])); a.download = fileName; a.click();
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([buf as BlobPart])); a.download = fileName; a.click();
+}
+async function saveWorkbook(fileName: string, wb: any) {
+  if (!hasXLSX()) { toast("The spreadsheet library did not load in this preview, so Excel files cannot be built here. The deployed site serves them directly."); return; }
+  await saveBytes(fileName, XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer);
 }
 
 function toast(msg: string) {
@@ -206,9 +215,9 @@ document.addEventListener("click", (e) => {
   if (a.dataset.export) {
     e.preventDefault();
     const live = livePublished(load()); if (!live) return toast("Nothing published yet");
-    if (!hasXLSX()) return toast("Excel download is unavailable in this preview; on the deployed site this button serves the file directly.");
+    if (!hasJSZip()) return toast("The download library did not load in this preview; on the deployed site this button serves the file directly.");
     const ex = buildExport(live.data, { kind: a.dataset.export as ExportKind, id: a.dataset.exportId! }, live.id);
-    saveWorkbook(ex.fileName, toWorkbook(XLSX, ex));
+    writeXlsx(ex.workbook, JSZip).then((bytes) => saveBytes(ex.fileName, bytes)).catch((e) => toast(String(e?.message ?? e)));
   }
   else if (href.startsWith("/api/admin/template")) { e.preventDefault(); downloadWorkbook(new URL(href, "http://x").searchParams.get("which") ?? "template", load()); }
   else if (href === "/admin") { e.preventDefault(); location.hash = "#admin"; }

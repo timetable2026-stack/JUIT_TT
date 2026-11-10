@@ -119,23 +119,32 @@ function dayByRow(sheet: GridSheetCells): (string | null)[] {
 
 export function splitFacultyCodes(raw: string): string[] {
   // "JBSW_RS13" is one code; "NSA;DGA", "NSA + DGA", "NSA/DGA" are several.
-  return raw.split(/[;,&+/]|\sand\s/i).map((p) => p.trim().toUpperCase()).filter(Boolean);
+  return raw.split(/[;,&+/]|\sand\s/i).map((p) => p.trim()).filter(Boolean);
 }
 
-/** code -> course name, gathered from any reference sheet that pairs them. */
+/** code -> course name, read from reference sheets whose header row names a course column
+ *  ("Course", "Course name", "Subject name") beside a code column ("Course code", "Code kept"). */
 function courseNames(all: GridSheetCells[]): Map<string, string> {
   const names = new Map<string, string>();
-  const CODE_RE = /^[0-9A-Z]{4,}$/;
+  const NAME_HDR = /^(course|subject)(\s*(name|title))?$/i;
+  const CODE_HDR = /^((course|subject)\s*code|code(\s*kept)?)$/i;
+  const CODE_RE = /^[0-9A-Z][0-9A-Z_/-]{3,}$/;
   for (const sheet of all) {
     if (looksLikeGrid(sheet)) continue;
-    for (const row of sheet.cells) {
-      for (let c = 0; c < row.length - 1; c++) {
-        const code = norm(row[c]).toUpperCase();
-        const name = norm(row[c + 1]);
-        if (CODE_RE.test(code) && name.length > 4 && /[a-z]/.test(name) && !CODE_RE.test(name.toUpperCase()) && !names.has(code)) {
-          names.set(code, name);
+    for (let h = 0; h < Math.min(6, sheet.cells.length); h++) {
+      const row = sheet.cells[h] ?? [];
+      const nameCol = row.findIndex((c) => NAME_HDR.test(norm(c)));
+      const codeCols = row.map((c, i) => (CODE_HDR.test(norm(c)) ? i : -1)).filter((i) => i >= 0);
+      if (nameCol < 0 || codeCols.length === 0) continue;
+      for (let r = h + 1; r < sheet.cells.length; r++) {
+        const name = norm(sheet.cells[r]?.[nameCol]);
+        if (name.length < 3 || !/[a-z]/i.test(name) || CODE_RE.test(name.toUpperCase()) && !/\s/.test(name)) continue;
+        for (const c of codeCols) {
+          const code = norm(sheet.cells[r]?.[c]).toUpperCase();
+          if (CODE_RE.test(code) && !/X{3,}/.test(code) && !names.has(code)) names.set(code, name);
         }
       }
+      break; // one header row per sheet
     }
   }
   return names;
@@ -152,7 +161,7 @@ function facultyDepartments(all: GridSheetCells[]): Map<string, string> {
     }
     if (headerRow < 0) continue;
     for (let r = headerRow + 1; r < sheet.cells.length; r++) {
-      const code = norm(sheet.cells[r]?.[0]).toUpperCase();
+      const code = norm(sheet.cells[r]?.[0]);
       if (code && !dept.has(code)) dept.set(code, norm(sheet.cells[r]?.[1]));
     }
   }
@@ -226,10 +235,10 @@ export function gridToSheets(all: GridSheetCells[], term: TermDates): GridResult
 
 /** Carry names, emails and other office-maintained fields from the live version onto a fresh grid import. */
 export function mergeFacultyDetails(fresh: RawRow[], previous: { id: string; name: string; email: string; department?: string; designation?: string; phone?: string; role: string }[]): { rows: RawRow[]; carried: number } {
-  const prev = new Map(previous.map((f) => [f.id.toUpperCase(), f]));
+  const prev = new Map(previous.map((f) => [f.id, f]));
   let carried = 0;
   const rows = fresh.map((r) => {
-    const p = prev.get(String(r["Faculty ID"]).toUpperCase());
+    const p = prev.get(String(r["Faculty ID"]));
     if (!p) return r;
     const keptName = p.name && p.name !== p.id;
     if (keptName || p.email) carried++;

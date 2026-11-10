@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { DAYS, type Announcement, type Change, type Faculty, type Prefs, type PublicPayload, type Slot } from "@/lib/types";
+import { allSections, slotBatches } from "@/lib/exportGrid";
 import { DownloadButton, FacultyPicker, SlotModal, TimetableGrid, batchLabel, changedKeys, facultyName, fmtDate, nowHHMM, slotLabel, subjectTitle, todayDay, weekOfSemester } from "./shared";
 
-type Tab = "today" | "week" | "classes" | "rooms" | "alerts" | "people";
+type Tab = "today" | "week" | "sections" | "rooms" | "alerts" | "people";
 const FID_KEY = "tt_fid";
-const TABS: [Tab, string][] = [["today", "Today"], ["week", "My week"], ["classes", "Classes"], ["rooms", "Rooms"], ["alerts", "Alerts"], ["people", "Faculty"]];
+const TABS: [Tab, string][] = [["today", "Today"], ["week", "My week"], ["sections", "Sections"], ["rooms", "Rooms"], ["alerts", "Alerts"], ["people", "Faculty"]];
 
 export function Portal() {
   const [payload, setPayload] = useState<PublicPayload | null>(null);
@@ -16,7 +17,7 @@ export function Portal() {
   const [modal, setModal] = useState<Slot | null>(null);
   const [tick, setTick] = useState(0);
   const [search, setSearch] = useState("");
-  const [jump, setJump] = useState<{ kind: "class" | "room" | "faculty"; id: string } | null>(null);
+  const [jump, setJump] = useState<{ kind: "section" | "room" | "faculty"; id: string } | null>(null);
 
   const load = () => fetch("/api/timetable", { cache: "no-store" }).then((r) => r.json()).then(setPayload).catch((e) => setError(String(e)));
   useEffect(() => {
@@ -24,9 +25,9 @@ export function Portal() {
     const params = new URLSearchParams(window.location.search);
     const fromLink = params.get("f");
     try {
-      if (fromLink) { localStorage.setItem(FID_KEY, fromLink.toUpperCase()); setFid(fromLink.toUpperCase()); }
+      if (fromLink) { localStorage.setItem(FID_KEY, fromLink); setFid(fromLink); }
       else setFid(localStorage.getItem(FID_KEY));
-    } catch { if (fromLink) setFid(fromLink.toUpperCase()); }
+    } catch { if (fromLink) setFid(fromLink); }
     if (params.get("alerts")) setTab("alerts");
     if (params.get("reminders")) setTab("today");
     const t = setInterval(() => setTick((x) => x + 1), 30000);
@@ -47,7 +48,7 @@ export function Portal() {
   const myPrefs: Prefs | undefined = useMemo(() => payload?.prefs.find((p) => p.facultyId === me?.id), [payload, me]);
 
   const pick = (f: Faculty) => { try { localStorage.setItem(FID_KEY, f.id); } catch {} setFid(f.id); setPicking(false); };
-  const go = (kind: "class" | "room" | "faculty", id: string) => { setJump({ kind, id }); setTab(kind === "class" ? "classes" : kind === "room" ? "rooms" : "people"); setSearch(""); };
+  const go = (kind: "section" | "room" | "faculty", id: string) => { setJump({ kind, id }); setTab(kind === "section" ? "sections" : kind === "room" ? "rooms" : "people"); setSearch(""); };
 
   if (error) return <Shell site={payload?.site}><div className="container"><div className="notice bad">Could not load the timetable: {error}</div></div></Shell>;
   if (!payload) return <Shell><div className="container"><div className="card muted">Loading timetable…</div></div></Shell>;
@@ -80,7 +81,7 @@ export function Portal() {
             ))}
           </div>
           <div className="search-wrap">
-            <input id="global-search" type="search" placeholder="Find a course, room or person…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <input id="global-search" type="search" placeholder="Find a course, section, room or person…" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape") setSearch(""); }} onBlur={() => setTimeout(() => setSearch(""), 180)} />
             {results && (
               <div className="search-results">
                 {results.length === 0 && <div className="muted small" style={{ padding: 10 }}>Nothing matches “{search}”.</div>}
@@ -94,7 +95,7 @@ export function Portal() {
         {tab === "today" && !me && <div className="card empty"><div className="empty-art">👋</div><h2>Welcome</h2><p className="muted">Choose your name once and this device will remember you. No password needed.</p><button className="btn primary" onClick={() => setPicking(true)}>Choose my name</button></div>}
         {tab === "week" && me && <MyWeek me={me} slots={mySlots} payload={payload} onCell={setModal} />}
         {tab === "week" && !me && <div className="card"><p>Pick your name to see your week.</p><button className="btn primary" onClick={() => setPicking(true)}>Choose my name</button></div>}
-        {tab === "classes" && <Classes payload={payload} onCell={setModal} initial={jump?.kind === "class" ? jump.id : undefined} />}
+        {tab === "sections" && <Sections payload={payload} onCell={setModal} initial={jump?.kind === "section" ? jump.id : undefined} />}
         {tab === "rooms" && <Rooms payload={payload} onCell={setModal} initial={jump?.kind === "room" ? jump.id : undefined} />}
         {tab === "alerts" && <Alerts payload={payload} me={me} seen={seenVersions} onAck={async (vid) => { if (!me) return; await fetch("/api/ack", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ versionId: vid, facultyId: me.id }) }); load(); }} />}
         {tab === "people" && <People payload={payload} me={me} onCell={setModal} initial={jump?.kind === "faculty" ? jump.id : undefined} />}
@@ -114,15 +115,17 @@ function initials(name: string) { return name.replace(/^(Dr|Prof|Mr|Ms|Mrs)\.?\s
 
 function searchAll(data: NonNullable<PublicPayload["data"]>, q: string) {
   const l = q.toLowerCase();
-  const out: { kind: "class" | "room" | "faculty"; id: string; label: string; sub: string }[] = [];
+  const out: { kind: "section" | "room" | "faculty"; id: string; label: string; sub: string }[] = [];
   for (const f of data.faculty) if (`${f.name} ${f.id} ${f.department ?? ""}`.toLowerCase().includes(l)) out.push({ kind: "faculty", id: f.id, label: f.name, sub: [f.id !== f.name ? f.id : "", f.department, f.designation].filter(Boolean).join(" · ") });
-  const rooms = new Set<string>(), codes = new Map<string, Slot>();
+  const rooms = new Set<string>(), sections = new Map<string, string>(), codes = new Map<string, Slot>();
   for (const s of data.slots) {
     if (s.room.toLowerCase().includes(l)) rooms.add(s.room);
-    if (s.subjectCode.toLowerCase().includes(l) || s.subjectName.toLowerCase().includes(l)) codes.set(`${s.semester}|${s.section}|${s.subjectCode}`, s);
+    for (const b of slotBatches(s.batch)) if (b.toLowerCase().includes(l)) sections.set(b, s.semester);
+    if (s.subjectCode.toLowerCase().includes(l) || s.subjectName.toLowerCase().includes(l)) codes.set(s.subjectCode, s);
   }
+  for (const [b, sem] of [...sections].sort()) out.push({ kind: "section", id: b, label: `Section ${b}`, sub: sem });
   for (const r of [...rooms].sort()) out.push({ kind: "room", id: r, label: r, sub: `${data.slots.filter((s) => s.room === r).length} periods/week` });
-  for (const s of codes.values()) out.push({ kind: "class", id: `${s.semester}|${s.section}`, label: `${s.subjectCode}${subjectTitle(s.subjectCode, s.subjectName) ? " " + s.subjectName : ""}`, sub: `${s.semester}${s.section ? " " + s.section : ""} · ${s.facultyIds.map((id) => facultyName(data, id)).join(", ")}` });
+  for (const s of codes.values()) { const first = slotBatches(s.batch)[0]; if (first) out.push({ kind: "section", id: first, label: `${s.subjectCode}${subjectTitle(s.subjectCode, s.subjectName) ? " " + s.subjectName : ""}`, sub: `${s.semester} · ${s.facultyIds.map((id) => facultyName(data, id)).join(", ")} · opens section ${first}` }); }
   return out.slice(0, 12);
 }
 
@@ -260,8 +263,9 @@ function ReminderCard({ me, prefs, payload, onSaved }: { me: Faculty; prefs?: Pr
 }
 
 function CopyButton({ text, label }: { text: string; label: string }) {
-  const [done, setDone] = useState(false);
-  return <button className="btn sm" onClick={() => { navigator.clipboard?.writeText(text).then(() => { setDone(true); setTimeout(() => setDone(false), 1500); }).catch(() => window.prompt("Copy this link:", text)); }}>{done ? "Copied" : label}</button>;
+  const [state, setState] = useState<"idle" | "done" | "fail">("idle");
+  const flash = (s: "done" | "fail") => { setState(s); setTimeout(() => setState("idle"), 1800); };
+  return <button className="btn sm" onClick={() => { (navigator.clipboard?.writeText(text) ?? Promise.reject()).then(() => flash("done")).catch(() => flash("fail")); }}>{state === "done" ? "Copied" : state === "fail" ? "Select & copy the text" : label}</button>;
 }
 
 function groupSubjects(slots: Slot[]) {
@@ -284,7 +288,7 @@ function MyWeek({ me, slots, payload, onCell }: { me: Faculty; slots: Slot[]; pa
     <div className="card">
       <div className="row between">
         <h2>{me.name} — weekly timetable</h2>
-        <div className="row"><span className="muted small">{slots.length} periods{changed.size > 0 ? ` · ${changed.size} changed in the latest publish (outlined)` : ""}</span><DownloadButton kind="faculty" id={me.id} label="Download as Excel" /></div>
+        <div className="row"><span className="muted small">{slots.length} periods{changed.size > 0 ? ` · ${changed.size} changed in the latest publish (outlined)` : ""}</span><DownloadButton kind="faculty" id={me.id} label="Download my timetable" /></div>
       </div>
       <TimetableGrid slots={slots} periods={payload.data!.periods} mode="faculty" changed={changed} onCell={onCell} />
       <p className="muted small" style={{ marginTop: 8 }}>Tap a class for room, co-faculty and notes. Blue = lecture, green = lab, amber = tutorial. The download has the same grid plus the office's one-row “Faculty view” format.</p>
@@ -292,27 +296,29 @@ function MyWeek({ me, slots, payload, onCell }: { me: Faculty; slots: Slot[]; pa
   );
 }
 
-function Classes({ payload, onCell, initial }: { payload: PublicPayload; onCell: (s: Slot) => void; initial?: string }) {
+function Sections({ payload, onCell, initial }: { payload: PublicPayload; onCell: (s: Slot) => void; initial?: string }) {
   const data = payload.data!;
-  const classes = useMemo(() => [...new Set(data.slots.map((s) => `${s.semester}|${s.section}`))].sort(), [data]);
-  const [sel, setSel] = useState(initial ?? classes[0] ?? "");
+  const sections = useMemo(() => allSections(data), [data]);
+  const [sel, setSel] = useState(initial ?? sections[0]?.id ?? "");
   useEffect(() => { if (initial) setSel(initial); }, [initial]);
-  const [semester, section] = sel.split("|");
-  const slots = data.slots.filter((s) => s.semester === semester && s.section === section);
+  const slots = data.slots.filter((s) => slotBatches(s.batch).includes(sel));
   const changed = changedKeys(payload.changes);
-  const sem = data.semesters.find((s) => s.name === semester);
-  const title = `${semester}${section ? " — Section " + section : ""}`;
+  const info = sections.find((x) => x.id === sel);
+  const sem = data.semesters.find((s) => s.name === info?.group.split(",")[0].trim());
+  const groups = [...new Set(sections.map((x) => x.group))];
   return (
     <div className="card">
       <div className="row between">
-        <h2>Class timetable</h2>
+        <h2>Section timetable</h2>
         <div className="row">
-          <select id="class-select" value={sel} onChange={(e) => setSel(e.target.value)} style={{ width: "auto" }}>{classes.map((c) => { const [a, b] = c.split("|"); return <option key={c} value={c}>{a}{b ? ` — Section ${b}` : ""}</option>; })}</select>
-          <DownloadButton kind="class" id={sel} label="Download" />
+          <select id="section-select" value={sel} onChange={(e) => setSel(e.target.value)} style={{ width: "auto" }}>
+            {groups.map((g) => <optgroup key={g} label={g}>{sections.filter((x) => x.group === g).map((x) => <option key={x.id} value={x.id}>{x.id} · {x.load}/wk</option>)}</optgroup>)}
+          </select>
+          <DownloadButton kind="section" id={sel} label="Download" />
           <button className="btn sm" data-print-action onClick={() => window.print()}>Print</button>
         </div>
       </div>
-      {sem && <p className="muted small">{title} · {sem.startDate} to {sem.endDate}{sem.examWindow ? ` · Exams ${sem.examWindow}` : ""} · {slots.length} periods/week</p>}
+      <p className="muted small">Section <b>{sel}</b>{info ? ` · ${info.group}` : ""}{sem ? ` · ${sem.startDate} to ${sem.endDate}${sem.examWindow ? ` · Exams ${sem.examWindow}` : ""}` : ""} · {slots.length} periods/week. Where several electives run in one slot, each is shown; students take one.</p>
       <TimetableGrid slots={slots} periods={data.periods} mode="class" changed={changed} onCell={onCell} />
       <div className="table-wrap" style={{ marginTop: 12 }}>
         <table><thead><tr><th>Code</th><th>Course</th><th>Type</th><th>Faculty</th><th>Per week</th></tr></thead>
