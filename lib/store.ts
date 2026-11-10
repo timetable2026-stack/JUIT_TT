@@ -131,10 +131,14 @@ function fileStore(path: string): Store {
   };
 }
 
+/** JUIT's Supabase project. Override with SUPABASE_URL if the project ever moves. */
+const DEFAULT_SUPABASE_URL = "https://pnrbebxwyzopepdbqexc.supabase.co";
+
 let singleton: Store | null = null;
 export function getStore(): Store {
   if (singleton) return singleton;
-  const url = process.env.SUPABASE_URL;
+  // The project URL is public information, so it has a default; the secret key never does.
+  const url = process.env.SUPABASE_URL || DEFAULT_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   // On Vercel the project folder is read-only; only /tmp is writable, and it is wiped on
   // every deploy and not shared between instances. Fine for a first look, not for real use.
@@ -144,6 +148,6 @@ export function getStore(): Store {
 }
 
 export function storeKind(): "supabase" | "local-file" | "ephemeral" {
-  if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) return "supabase";
+  if ((process.env.SUPABASE_URL || DEFAULT_SUPABASE_URL) && process.env.SUPABASE_SERVICE_ROLE_KEY) return "supabase";
   return process.env.VERCEL ? "ephemeral" : "local-file";
 }
