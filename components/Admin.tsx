@@ -5,13 +5,14 @@ import { ChangeRow } from "./Portal";
 import { TimetableGrid, changedKeys, fmtDate } from "./shared";
 import { ThemeToggle } from "./ThemeToggle";
 import { LoadingScreen } from "./LoadingScreen";
+import { Statistics } from "./Statistics";
 
 interface VersionRow { id: number; status: string; createdAt: string; publishedAt?: string; note?: string; fileName?: string; summary: { slots: number; faculty: number; changes: number; affectedFaculty: number }; changes: Change[]; issues: Issue[]; faculty: Faculty[]; semesters: string[] }
 interface Status { admin: boolean; config?: { store: string; email: boolean; transport?: string; from: string | null; cron: boolean; site: { url: string; department: string; institute: string } }; versions?: VersionRow[]; emailLog?: EmailLogEntry[]; announcements?: Announcement[]; acks?: Ack[]; prefs?: Prefs[]; settings?: Settings }
 interface Conversion { used: boolean; groups: string[]; report: { sheet: string; day: string; classes: number }[]; notes: string[]; carriedFaculty: number }
 interface UploadResult { ok: boolean; draftId: number | null; fileName: string; issues: Issue[]; changes: Change[]; byFaculty: Record<string, string[]>; summary: { slots: number; faculty: number; changes: number; affectedFaculty: number } | null; isFirstPublish: boolean; conversion: Conversion | null; data: Dataset | null; error?: string }
 
-type Section = "overview" | "upload" | "reminders" | "announce" | "versions" | "reach" | "people" | "email" | "settings";
+type Section = "overview" | "upload" | "stats" | "reminders" | "announce" | "versions" | "reach" | "people" | "email" | "settings";
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, { ...init, headers: init?.body instanceof FormData ? init?.headers : { "Content-Type": "application/json", ...(init?.headers ?? {}) } });
@@ -47,7 +48,7 @@ export function Admin() {
   );
 
   const live = status.versions?.find((v) => v.status === "published") ?? null;
-  const nav: [Section, string][] = [["overview", "Overview"], ["upload", "Upload & publish"], ["reminders", "Daily reminders"], ["announce", "Announcements"], ["reach", "Who has seen it"], ["versions", "Versions & rollback"], ["people", "People"], ["email", "Email log"], ["settings", "Setup"]];
+  const nav: [Section, string][] = [["overview", "Overview"], ["upload", "Upload & publish"], ["stats", "Load & statistics"], ["reminders", "Daily reminders"], ["announce", "Announcements"], ["reach", "Who has seen it"], ["versions", "Versions & rollback"], ["people", "People"], ["email", "Email log"], ["settings", "Setup"]];
 
   return (
     <AdminShell right={<><a className="btn sm" href="/" target="_blank">Open portal ↗</a><button className="btn sm" onClick={async () => { await api("/api/admin/logout", { method: "POST" }); reload(); }}>Sign out</button></>}>
@@ -57,6 +58,7 @@ export function Admin() {
           {err && <div className="notice bad">{err}</div>}
           {section === "overview" && <Overview status={status} live={live} go={setSection} />}
           {section === "upload" && <Upload live={live} onPublished={() => { reload(); setSection("reach"); }} />}
+          {section === "stats" && (live ? <Statistics /> : <div className="card muted">Publish a timetable first; statistics are computed from the live version.</div>)}
           {section === "reminders" && <Reminders status={status} live={live} onDone={reload} />}
           {section === "announce" && <Announce live={live} anns={status.announcements ?? []} onDone={reload} />}
           {section === "versions" && <Versions versions={status.versions ?? []} onDone={reload} />}
@@ -117,6 +119,7 @@ function Overview({ status, live, go }: { status: Status; live: VersionRow | nul
         <div className="row" style={{ marginTop: 12 }}>
           <button className="btn" onClick={() => go("announce")}>Post an announcement</button>
           <button className="btn" onClick={() => go("reminders")}>Today's reminders</button>
+          <button className="btn" onClick={() => go("stats")}>Load &amp; statistics</button>
           <a className="btn" href="/api/admin/template?which=template">Blank template</a>
           {live && <a className="btn" href="/api/admin/template?which=current">Current timetable as Excel</a>}
         </div>

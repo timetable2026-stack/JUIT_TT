@@ -11,6 +11,8 @@ import { icsForFaculty } from "../lib/format";
 import { gridToSheets, looksLikeGrid, mergeFacultyDetails } from "../lib/grid";
 import { buildExport, type ExportKind } from "../lib/exportGrid";
 import { writeXlsx } from "../lib/xlsxWriter";
+import { computeStats, statsToSheets } from "../lib/stats";
+import { STYLES } from "../lib/exportGrid";
 import facultyNames from "./faculty-names.json";
 import { dailyReminderEmail, istNow, slotsOnDay, withinTerm } from "../lib/reminders";
 import { DEFAULT_SETTINGS, type Ack, type Announcement, type EmailLogEntry, type Prefs, type PublicPayload, type Settings, type Version } from "../lib/types";
@@ -203,6 +205,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       if (body.action === "settings") { const { action, ...patch } = body; db.settings = { ...settingsOf(db), ...patch }; save(db); return json({ ok: true, settings: settingsOf(db) }); }
       if (body.action === "send") { const plan = planReminders(db, (window as any).__previewDate ? new Date(`${(window as any).__previewDate}T06:00:00+05:30`) : new Date()); let id = nextId(db.emailLog); for (const r of plan.recipients) db.emailLog.push({ id: id++, createdAt: new Date().toISOString(), kind: "daily", refId: Number(plan.date.replace(/-/g, "")), recipient: r.email || "(no address)", facultyId: r.id, subject: r.subject, status: "skipped", error: r.email ? "Preview: no email is sent from the browser demo" : "No email address on file" }); save(db); return json({ ok: true, skip: plan.skip, planned: plan.recipients.length, sent: 0, failed: 0, skipped: plan.recipients.length }); }
     }
+    if (path === "/api/admin/stats") { const live = livePublished(db); if (!live) return json({ error: "Nothing published yet" }, 404); return json(computeStats(live.data, live.id, live.publishedAt)); }
     if (path === "/api/admin/versions") { const id = Number(u.searchParams.get("id")); return json(db.versions.find((v) => v.id === id) ?? { error: "Not found" }); }
     return json({ error: "Unknown route " + path }, 404);
   } catch (e: any) { return json({ error: String(e?.message ?? e) }, 500); }
@@ -212,6 +215,14 @@ document.addEventListener("click", (e) => {
   const a = (e.target as HTMLElement).closest("a") as HTMLAnchorElement | null;
   if (!a) return;
   const href = a.getAttribute("href") || "";
+  if (a.dataset.export === "stats") {
+    e.preventDefault();
+    const live = livePublished(load()); if (!live) return toast("Nothing published yet");
+    if (!hasJSZip()) return toast("The download library did not load in this preview; on the deployed site this button serves the file directly.");
+    const sheets = statsToSheets(computeStats(live.data, live.id, live.publishedAt)).map((s) => ({ name: s.name, cols: s.rows[0]?.map((_, i) => (i === 0 ? 34 : 14)) ?? [], freeze: "A2", rows: s.rows.map((r, ri) => ({ cells: r.map((v) => ({ v, s: ri === 0 ? 1 : 0 })) })) }));
+    writeXlsx({ styles: STYLES, sheets }, JSZip).then((bytes) => saveBytes(`Timetable_Statistics_v${live.id}.xlsx`, bytes)).catch((e) => toast(String(e?.message ?? e)));
+    return;
+  }
   if (a.dataset.export) {
     e.preventDefault();
     const live = livePublished(load()); if (!live) return toast("Nothing published yet");
