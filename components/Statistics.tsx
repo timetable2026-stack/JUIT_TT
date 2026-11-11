@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import type { Stats } from "@/lib/stats";
+import { SearchSelect } from "./SearchSelect";
 
 async function api<T>(url: string): Promise<T> { const r = await fetch(url); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error ?? `Request failed (${r.status})`); return j as T; }
 
@@ -88,7 +89,7 @@ export function Statistics() {
           <h3>Faculty ({rows.length})</h3>
           <div className="row">
             <input type="search" placeholder="Search name or code…" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: 200 }} />
-            <select value={dept} onChange={(e) => setDept(e.target.value)} style={{ width: "auto" }}><option value="all">All departments</option>{st.departments.map((d) => <option key={d.dept} value={d.dept}>{d.dept}</option>)}</select>
+            <SearchSelect value={dept} onChange={setDept} width={200} placeholder="Department…" ariaLabel="Department" options={[{ value: "all", label: "All departments" }, ...st.departments.map((d) => ({ value: d.dept, label: d.dept, sub: `${d.faculty} faculty` }))]} />
           </div>
         </div>
         <div className="table-wrap" style={{ maxHeight: 520, overflowY: "auto" }}><table>

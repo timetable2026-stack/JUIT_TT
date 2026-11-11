@@ -6,6 +6,7 @@ import { TimetableGrid, changedKeys, fmtDate } from "./shared";
 import { ThemeToggle } from "./ThemeToggle";
 import { LoadingScreen } from "./LoadingScreen";
 import { Statistics } from "./Statistics";
+import { SearchSelect } from "./SearchSelect";
 
 interface VersionRow { id: number; status: string; createdAt: string; publishedAt?: string; note?: string; fileName?: string; summary: { slots: number; faculty: number; changes: number; affectedFaculty: number }; changes: Change[]; issues: Issue[]; faculty: Faculty[]; semesters: string[] }
 interface Status { admin: boolean; config?: { store: string; email: boolean; transport?: string; from: string | null; cron: boolean; site: { url: string; department: string; institute: string } }; versions?: VersionRow[]; emailLog?: EmailLogEntry[]; announcements?: Announcement[]; acks?: Ack[]; prefs?: Prefs[]; settings?: Settings }
@@ -265,7 +266,7 @@ function GridPreview({ data, changes }: { data: Dataset; changes: Change[] }) {
   const classes = [...new Set(data.slots.map((s) => `${s.semester}|${s.section}`))].sort();
   const [sel, setSel] = useState(classes[0] ?? "");
   const [sem, sec] = sel.split("|");
-  return <div style={{ marginTop: 8 }}><select value={sel} onChange={(e) => setSel(e.target.value)} style={{ width: "auto", marginBottom: 8 }}>{classes.map((c) => <option key={c} value={c}>{c.replace("|", " ").trim()}</option>)}</select><TimetableGrid slots={data.slots.filter((s) => s.semester === sem && s.section === sec)} periods={data.periods} mode="class" changed={changedKeys(changes)} /></div>;
+  return <div style={{ marginTop: 8 }}><div style={{ marginBottom: 8 }}><SearchSelect value={sel} onChange={setSel} width={220} placeholder="Search year group…" ariaLabel="Year group" options={classes.map((c) => ({ value: c, label: c.replace("|", " ").trim() }))} /></div><TimetableGrid slots={data.slots.filter((s) => s.semester === sem && s.section === sec)} periods={data.periods} mode="class" changed={changedKeys(changes)} /></div>;
 }
 
 /** Repeated issues of one kind collapse into a single row with a count. */
@@ -338,7 +339,8 @@ function Reminders({ status, live, onDone }: { status: Status; live: VersionRow 
             </div>
             <div className="row" style={{ margin: "12px 0" }}>
               <button className="btn primary" disabled={busy || plan.counts.willEmail === 0} onClick={sendNow} title={plan.counts.willEmail === 0 ? "Nobody with classes today has an email address on file" : ""}>{busy ? "Sending…" : `Send today's ${plan.counts.willEmail} reminder${plan.counts.willEmail === 1 ? "" : "s"} now`}</button>
-              <select value={previewFor ?? plan.preview?.id ?? ""} onChange={(e) => setPreviewFor(e.target.value)} style={{ width: "auto" }}>{plan.recipients.map((r) => <option key={r.id} value={r.id}>{r.name} · {r.classes} class{r.classes === 1 ? "" : "es"}</option>)}</select>
+              <SearchSelect id="reminder-preview" value={previewFor ?? plan.preview?.id ?? ""} onChange={setPreviewFor} width={280} placeholder="Search a faculty member…" ariaLabel="Preview recipient"
+                options={plan.recipients.map((r) => ({ value: r.id, label: r.name, sub: `${r.id} · ${r.classes} class${r.classes === 1 ? "" : "es"}` }))} />
               {msg && <span className="small">{msg}</span>}
             </div>
             {plan.preview && <div className="email-preview"><div className="subject"><b>To:</b> {plan.recipients.find((r) => r.id === plan.preview!.id)?.email || "(no email)"} · <b>Subject:</b> {plan.preview.subject}</div><iframe title="Reminder preview" srcDoc={plan.preview.html} sandbox="" /></div>}
@@ -440,7 +442,7 @@ function Reach({ versions, acks, onDone }: { versions: VersionRow[]; acks: Ack[]
   const resend = async () => { setBusy(true); setMsg(null); try { const r = await api<any>("/api/admin/resend", { method: "POST", body: JSON.stringify({ versionId: v.id }) }); setMsg(`Reminder: ${r.sent} sent, ${r.skipped} skipped, ${r.failed} failed of ${r.recipients}.`); onDone(); } catch (e: any) { setMsg(e.message); } finally { setBusy(false); } };
   return (
     <div className="card">
-      <div className="row between"><h2>Who has seen version {v.id}</h2><select value={sel} onChange={(e) => setSel(Number(e.target.value))} style={{ width: "auto" }}>{pubs.map((p) => <option key={p.id} value={p.id}>Version {p.id} · {fmtDate(p.publishedAt)}</option>)}</select></div>
+      <div className="row between"><h2>Who has seen version {v.id}</h2><SearchSelect value={String(sel)} onChange={(v) => setSel(Number(v))} width={300} placeholder="Search version…" ariaLabel="Version" options={pubs.map((p) => ({ value: String(p.id), label: `Version ${p.id}`, sub: `${fmtDate(p.publishedAt)} · ${p.summary.changes} changes` }))} /></div>
       <div className="grid stats" style={{ margin: "10px 0" }}><div className="stat"><div className="n">{affected.length}</div><div className="l">faculty affected</div></div><div className="stat"><div className="n">{affected.length - unseen.length}</div><div className="l">marked as seen</div></div><div className="stat"><div className="n">{unseen.length}</div><div className="l">not yet seen</div></div></div>
       <div className="row"><button className="btn primary" disabled={busy || unseen.length === 0} onClick={resend}>{busy ? "Sending…" : `Re-email the ${unseen.length} who have not seen it`}</button>{msg && <span className="small">{msg}</span>}</div>
       <div className="table-wrap" style={{ marginTop: 12 }}><table><thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Seen at</th></tr></thead>

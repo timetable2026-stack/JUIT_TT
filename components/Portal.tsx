@@ -4,6 +4,7 @@ import { DAYS, type Announcement, type Change, type Faculty, type Prefs, type Pu
 import { allSections, slotBatches } from "@/lib/exportGrid";
 import { ThemeToggle } from "./ThemeToggle";
 import { LoadingScreen } from "./LoadingScreen";
+import { SearchSelect } from "./SearchSelect";
 import { DownloadButton, FacultyPicker, SlotModal, TimetableGrid, batchLabel, changedKeys, facultyName, fmtDate, nowHHMM, slotLabel, subjectTitle, todayDay, weekOfSemester } from "./shared";
 
 type Tab = "today" | "week" | "sections" | "rooms" | "alerts" | "people";
@@ -322,9 +323,8 @@ function Sections({ payload, onCell, initial }: { payload: PublicPayload; onCell
       <div className="row between">
         <h2>Section timetable</h2>
         <div className="row">
-          <select id="section-select" value={sel} onChange={(e) => setSel(e.target.value)} style={{ width: "auto" }}>
-            {groups.map((g) => <optgroup key={g} label={g}>{sections.filter((x) => x.group === g).map((x) => <option key={x.id} value={x.id}>{x.id} · {x.load}/wk</option>)}</optgroup>)}
-          </select>
+          <SearchSelect id="section-select" value={sel} onChange={setSel} width={240} placeholder="Search section, e.g. 26BT27" ariaLabel="Section"
+            options={groups.flatMap((g) => sections.filter((x) => x.group === g).map((x) => ({ value: x.id, label: x.id, sub: `${x.load}/wk`, group: g })))} />
           <DownloadButton kind="section" id={sel} label="Download" />
           <button className="btn sm" data-print-action onClick={() => window.print()}>Print</button>
         </div>
@@ -357,7 +357,8 @@ function Rooms({ payload, onCell, initial }: { payload: PublicPayload; onCell: (
       <div className="row between">
         <h2>Room timetable</h2>
         <div className="row">
-          <select id="room-select" value={room} onChange={(e) => setRoom(e.target.value)} style={{ width: "auto" }}>{rooms.map((r) => <option key={r}>{r}</option>)}</select>
+          <SearchSelect id="room-select" value={room} onChange={setRoom} width={200} placeholder="Search room, e.g. CR05" ariaLabel="Room"
+            options={rooms.map((r) => ({ value: r, label: r, sub: `${data.slots.filter((s) => s.room === r).length}/wk` }))} />
           <span className="pill light">{busy} of {total} periods used</span>
           <DownloadButton kind="room" id={room} label="Download" />
         </div>

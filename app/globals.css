@@ -321,3 +321,19 @@ tr:last-child td { border-bottom: 0; }
 .dist-label { font-size: 13px; color: var(--muted); text-align: right; }
 table.heat td { text-align: center; font-weight: 600; min-width: 48px; }
 table.heat th { text-align: center; }
+
+/* ---- searchable dropdown ---- */
+.sselect { position: relative; max-width: 100%; }
+.sselect-input { width: 100%; padding: 9px 56px 9px 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink); font: inherit; text-overflow: ellipsis; }
+.sselect.open .sselect-input { border-color: var(--navy); box-shadow: 0 0 0 3px color-mix(in srgb, var(--navy) 18%, transparent); }
+.sselect-sub { position: absolute; right: 28px; top: 50%; transform: translateY(-50%); font-size: 11.5px; color: var(--muted); pointer-events: none; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sselect-caret { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; font-size: 12px; }
+.sselect-list { position: absolute; top: calc(100% + 4px); left: 0; min-width: 100%; width: max-content; max-width: min(92vw, 420px); max-height: 320px; overflow: auto; background: var(--card); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow-pop); z-index: 40; padding: 4px; }
+.sselect-group { padding: 8px 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); position: sticky; top: 0; background: var(--card); }
+.sselect-opt { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; padding: 8px 10px; border-radius: 7px; cursor: pointer; }
+.sselect-opt small { color: var(--muted); white-space: nowrap; }
+.sselect-opt.active { background: var(--soft); }
+.sselect-opt.selected { font-weight: 700; }
+.sselect-opt.selected::after { content: "✓"; color: var(--good); margin-left: 6px; }
+.sselect-empty { padding: 12px; color: var(--muted); font-size: 13px; }
+.sselect-foot { padding: 6px 10px 4px; font-size: 11px; color: var(--muted); border-top: 1px solid var(--line); margin-top: 4px; }
