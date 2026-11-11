@@ -137,23 +137,26 @@ th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: le
 th { background: var(--soft); font-weight: 700; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; position: sticky; top: 0; }
 tr:last-child td { border-bottom: 0; }
 
-/* Timetable grid */
-.tt { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 760px; font-size: 12.5px; }
-.tt th { position: static; background: var(--soft); text-transform: none; font-size: 12px; letter-spacing: 0; border-bottom: 1px solid var(--line); }
-.tt th.period { width: 86px; }
-.tt td { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); height: 64px; padding: 4px; }
-.tt td:last-child { border-right: 0; }
-.tt td.period { background: var(--soft); font-weight: 700; color: var(--muted); white-space: nowrap; }
-.tt td.period small { display: block; font-weight: 500; }
-.tt td.break { background: repeating-linear-gradient(45deg, var(--card-2), var(--card-2) 6px, var(--soft) 6px, var(--soft) 12px); text-align: center; color: var(--muted); font-weight: 600; }
-.cell { height: 100%; border-radius: 7px; padding: 6px 8px; background: var(--info-bg); border-left: 3px solid var(--navy); cursor: pointer; }
+/* Timetable grid — days down, periods across (same layout as the TTC Excel) */
+.tt { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 880px; font-size: 12.5px; table-layout: fixed; }
+.tt th { position: static; background: var(--soft); text-transform: none; font-size: 12px; letter-spacing: 0; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); text-align: center; padding: 6px 4px; }
+.tt th small { display: block; font-weight: 500; color: var(--muted); font-size: 11px; }
+.tt th.day, .tt td.day { width: 64px; }
+.tt th.break-h { color: var(--muted); }
+.tt td { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); height: 72px; padding: 4px; vertical-align: top; }
+.tt td:last-child, .tt th:last-child { border-right: 0; }
+.tt td.day { background: var(--soft); font-weight: 800; color: var(--muted); text-align: center; vertical-align: middle; letter-spacing: .04em; }
+.tt td.break { background: repeating-linear-gradient(45deg, var(--card-2), var(--card-2) 6px, var(--soft) 6px, var(--soft) 12px); }
+.cell { border-radius: 7px; padding: 6px 8px; background: var(--info-bg); border-left: 3px solid var(--navy); cursor: pointer; margin-bottom: 4px; }
+.cell:last-child { margin-bottom: 0; }
 .cell.Lab { background: var(--lab-bg); border-left-color: var(--good); }
 .cell.Tutorial { background: var(--tut-bg); border-left-color: var(--tut-line); }
 .cell.Seminar, .cell.Project { background: var(--sem-bg); border-left-color: var(--sem-line); }
 .cell.changed { outline: 2px solid var(--accent); outline-offset: -2px; }
-.cell b { display: block; font-size: 12.5px; }
+.cell b { display: block; font-size: 12.5px; word-break: break-word; }
 .cell span { display: block; color: var(--muted); font-size: 11.5px; }
-.cell.free { background: transparent; border-left-color: transparent; color: var(--faint); font-size: 11px; text-align: center; padding-top: 22px; cursor: default; }
+.cell.free, .cell.filler { height: 100%; min-height: 60px; background: transparent; border-left-color: transparent; color: var(--faint); font-size: 11px; text-align: center; display: grid; place-items: center; cursor: default; }
+.cell.filler { background: var(--soft); color: var(--muted); font-weight: 700; letter-spacing: .04em; }
 
 /* Today list */
 .today-item { display: grid; grid-template-columns: 88px 1fr auto; gap: 12px; align-items: center; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); }

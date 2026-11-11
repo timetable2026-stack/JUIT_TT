@@ -1,6 +1,6 @@
 // Excel downloads in the TTC's own "Faculty Timetable" layout: one sheet of
 // stacked 9-row blocks (header · time row · MON–SAT), cells written as
-// "L-CODE / BATCH / (ROOM)", LUNCH in the 12:00 slot when free, "--" for the
+// "L-CODE / BATCH / (ROOM)", "--" for the
 // end-of-day column and Saturday afternoons, thin borders, grey header band.
 // The same block serves one faculty member, one section (batch) or one room,
 // and "all" stacks every block of that kind into a single sheet.
@@ -125,7 +125,6 @@ export function buildBlock(data: Dataset, spec: ExportSpec): Row[] {
   const periods = data.periods;
   const slots = selectSlots(data, spec);
   const width = periods.length + 2; // day column + one column per period + end-of-day column
-  const lunchPeriod = periods.find((p) => p.start === "12:00")?.number ?? periods.find((p) => p.isBreak)?.number ?? null;
   const at = new Map<string, Slot[]>();
   for (const s of slots) { const k = `${s.day}|${s.period}`; at.set(k, [...(at.get(k) ?? []), s]); }
 
@@ -138,7 +137,6 @@ export function buildBlock(data: Dataset, spec: ExportSpec): Row[] {
       const here = at.get(`${d}|${p.number}`) ?? [];
       if (here.length) cells.push({ v: here.map((s) => cellText(s, spec.kind)).join("\n\n"), s: S.cell });
       else if (d === "Sat" && p.start >= "13:00") cells.push({ v: "--", s: S.filler });
-      else if (p.number === lunchPeriod && d !== "Sat") cells.push({ v: "LUNCH", s: S.lunch });
       else cells.push({ v: null, s: S.cell });
     }
     cells.push({ v: "--", s: S.filler });

@@ -61,6 +61,9 @@ export function changedKeys(changes: Change[]) {
   return set;
 }
 
+const ampm = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number); return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`; };
+
+/** Weekly grid in the TTC layout: days down the left, periods with their times across the top. */
 export function TimetableGrid({ slots, periods, mode, changed, onCell, showDays = DAYS }: { slots: Slot[]; periods: Period[]; mode: "faculty" | "class" | "room"; changed?: Set<string>; onCell?: (s: Slot) => void; showDays?: readonly string[] }) {
   const grid = new Map<string, Slot[]>();
   for (const s of slots) { const k = `${s.day}|${s.period}`; grid.set(k, [...(grid.get(k) ?? []), s]); }
@@ -68,23 +71,26 @@ export function TimetableGrid({ slots, periods, mode, changed, onCell, showDays 
     <div className="table-wrap">
       <table className="tt">
         <thead>
-          <tr><th className="period">Period</th>{showDays.map((d) => <th key={d}>{d}</th>)}</tr>
+          <tr><th className="day">Day</th>{periods.map((p) => <th key={p.number} className={p.isBreak ? "break-h" : ""}>{p.isBreak ? (p.label ?? "Break") : `P${p.number}`}<small>{ampm(p.start)} – {ampm(p.end)}</small></th>)}</tr>
         </thead>
         <tbody>
-          {periods.map((p) => p.isBreak ? (
-            <tr key={p.number}><td className="period">{p.start}<small>{p.end}</small></td><td className="break" colSpan={showDays.length}>{p.label ?? "Break"}</td></tr>
-          ) : (
-            <tr key={p.number}>
-              <td className="period">P{p.number}<small>{p.start}–{p.end}</small></td>
-              {showDays.map((d) => {
+          {showDays.map((d) => (
+            <tr key={d}>
+              <td className="day">{d.toUpperCase()}</td>
+              {periods.map((p) => {
                 const here = grid.get(`${d}|${p.number}`) ?? [];
+                if (here.length === 0) {
+                  if (p.isBreak) return <td key={p.number} className="break" />;
+                  if (d === "Sat" && p.start >= "13:00") return <td key={p.number}><div className="cell filler">—</div></td>;
+                  return <td key={p.number}><div className="cell free">free</div></td>;
+                }
                 return (
-                  <td key={d}>
-                    {here.length === 0 ? <div className="cell free">free</div> : here.map((s) => (
+                  <td key={p.number}>
+                    {here.map((s) => (
                       <div key={s.key} className={`cell ${s.type} ${changed?.has(s.key) ? "changed" : ""}`} onClick={() => onCell?.(s)} title={s.notes}>
                         <b>{s.subjectCode}{mode === "faculty" || mode === "room" ? ` · ${slotLabel(s)}` : ""}</b>
                         {subjectTitle(s.subjectCode, s.subjectName) && <span>{s.subjectName}</span>}
-                        <span>{mode === "room" ? s.facultyIds.join(", ") : s.room}{s.type !== "Lecture" ? ` · ${s.type}` : ""}{mode === "class" && s.batch ? ` · ${s.batch}` : ""}</span>
+                        <span>{mode === "room" ? s.facultyIds.join(", ") : s.room}{s.type !== "Lecture" ? ` · ${s.type}` : ""}{mode === "class" && s.batch ? ` · ${batchLabel(s.batch)}` : ""}</span>
                       </div>
                     ))}
                   </td>
