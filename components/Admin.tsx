@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Ack, Announcement, Change, Dataset, EmailLogEntry, Faculty, Issue, Prefs, Settings } from "@/lib/types";
 import { ChangeRow } from "./Portal";
 import { TimetableGrid, changedKeys, fmtDate } from "./shared";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface VersionRow { id: number; status: string; createdAt: string; publishedAt?: string; note?: string; fileName?: string; summary: { slots: number; faculty: number; changes: number; affectedFaculty: number }; changes: Change[]; issues: Issue[]; faculty: Faculty[]; semesters: string[] }
 interface Status { admin: boolean; config?: { store: string; email: boolean; transport?: string; from: string | null; cron: boolean; site: { url: string; department: string; institute: string } }; versions?: VersionRow[]; emailLog?: EmailLogEntry[]; announcements?: Announcement[]; acks?: Ack[]; prefs?: Prefs[]; settings?: Settings }
@@ -71,8 +72,8 @@ export function Admin() {
 function AdminShell({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
   return (
     <>
-      <header className="topbar"><div className="topbar-inner"><div className="brand"><div className="brand-mark">TT</div><div><h1>Time Table Committee</h1><div className="sub">Upload · review · publish · remind</div></div></div><div className="topbar-actions">{right}</div></div></header>
-      {children}
+      <header className="topbar"><div className="topbar-inner"><div className="brand"><div className="brand-mark">TT</div><div><h1>Time Table Committee</h1><div className="sub">Upload · review · publish · remind</div></div></div><div className="topbar-actions"><ThemeToggle />{right}</div></div></header>
+      <main id="main">{children}</main>
     </>
   );
 }
@@ -222,7 +223,7 @@ function Upload({ live, onPublished }: { live: VersionRow | null; onPublished: (
                 {view === "faculty" && byFaculty.map((g) => (
                   <div className="alert-group" key={g.fid} style={{ marginBottom: 8 }}>
                     <div className="alert-head"><b>{g.name}</b><div className="row"><span className="muted small">{g.changes.length} change{g.changes.length === 1 ? "" : "s"} · {facById.get(g.fid)?.email || "no email on file"}</span><button className="btn sm" onClick={() => setPreview(preview === g.fid ? null : g.fid)}>{preview === g.fid ? "Hide email" : "Preview email"}</button></div></div>
-                    {preview === g.fid && <div className="alert-note" style={{ background: "#f8fafc", color: "inherit" }}><b>Subject:</b> Timetable update: {g.changes.length} change{g.changes.length === 1 ? "" : "s"} to your classes<br /><b>To:</b> {facById.get(g.fid)?.email || "— (not sent: no address)"}<br /><span className="small muted">Lists the changes below, your note, a “View and mark as seen” button and the updated weekly grid.</span></div>}
+                    {preview === g.fid && <div className="alert-note" style={{ background: "var(--card-2)", color: "inherit" }}><b>Subject:</b> Timetable update: {g.changes.length} change{g.changes.length === 1 ? "" : "s"} to your classes<br /><b>To:</b> {facById.get(g.fid)?.email || "— (not sent: no address)"}<br /><span className="small muted">Lists the changes below, your note, a “View and mark as seen” button and the updated weekly grid.</span></div>}
                     {g.changes.map((c) => <ChangeRow key={c.id} c={c} />)}
                   </div>
                 ))}

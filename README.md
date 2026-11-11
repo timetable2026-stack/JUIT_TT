@@ -95,6 +95,26 @@ Elective buckets are handled: where several electives run in parallel for one ba
 with the full batch list on the class detail. `TBA` is treated as "not yet assigned" and never
 reported as a clash.
 
+## 2c. Search visibility, themes and performance
+
+* **SEO** — the home page is server-rendered with real content (semester dates, counts, version), full
+  metadata (title, description, keywords, canonical, Open Graph and Twitter cards with a generated image),
+  JSON-LD for the university, the website and the app, `robots.txt` (admin and API excluded),
+  `sitemap.xml`, a web-app manifest and icons. The admin area is `noindex`.
+  Two things only you can do, and they matter more than anything in the code:
+  1. **Put it on a university domain** — `timetable.juitsolan.in` (CNAME from IT, then Vercel → Settings →
+     Domains, then set `NEXT_PUBLIC_SITE_URL`). Search engines rank an institutional domain far above a
+     `.vercel.app` address, and it is what people will type.
+  2. **Register it in Google Search Console** (search.google.com/search-console → add the domain → submit
+     `https://<domain>/sitemap.xml`). Indexing then happens within days instead of weeks. A link to the
+     portal from the JUIT website's timetable or notices page completes the picture.
+* **Light and dark mode** — follows the device setting; the Auto / Light / Dark control in the header
+  overrides it per device, with no flash on load.
+* **Performance and hardening** — first paint carries the data (no loading spinner), the public API is
+  edge-cached for 60 s, security headers (HSTS, nosniff, frame and referrer policies), admin login is
+  rate-limited, downloads and admin pages are never cached, error / not-found / loading pages, skip link,
+  focus rings, ARIA tabs, reduced-motion support, installable as a home-screen app.
+
 ## 3. Run locally
 
 ```bash

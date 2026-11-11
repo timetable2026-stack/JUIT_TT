@@ -15,14 +15,14 @@ const result = await esbuild.build({
 const js = result.outputFiles[0].text;
 const css = readFileSync(path.join(root, "app/globals.css"), "utf8");
 const html = `<title>JUIT Timetable Portal</title>
+<script>(function(){try{var m=localStorage.getItem("tt_theme");if(m==="light"||m==="dark"){document.documentElement.setAttribute("data-theme",m);}}catch(e){}})();</script>
 <style>${css}
-:root { color-scheme: light; }
 body { padding-left: max(0px, env(safe-area-inset-left, 0px)); padding-right: max(0px, env(safe-area-inset-right, 0px)); }
 /* Printing is unavailable inside the preview frame; the deployed site keeps these controls. */
 [data-print-action] { display: none !important; }
-.demo-bar { background: #fff6d6; border-bottom: 1px solid #e6cf7a; font-size: 13px; padding: 8px 16px; display: flex; flex-direction: column; gap: 6px; }
+.demo-bar { background: var(--warn-bg); color: var(--warn-ink); border-bottom: 1px solid var(--warn-line); font-size: 13px; padding: 8px 16px; display: flex; flex-direction: column; gap: 6px; }
 .demo-bar .row { gap: 6px; }
-#toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); background: #1a1d21; color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 13.5px; opacity: 0; pointer-events: none; transition: all .2s; z-index: 100; max-width: 90vw; }
+#toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 13.5px; opacity: 0; pointer-events: none; transition: all .2s; z-index: 100; max-width: 90vw; }
 #toast.show { opacity: 1; transform: translate(-50%, 0); }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>

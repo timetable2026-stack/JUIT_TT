@@ -2,14 +2,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { DAYS, type Announcement, type Change, type Faculty, type Prefs, type PublicPayload, type Slot } from "@/lib/types";
 import { allSections, slotBatches } from "@/lib/exportGrid";
+import { ThemeToggle } from "./ThemeToggle";
 import { DownloadButton, FacultyPicker, SlotModal, TimetableGrid, batchLabel, changedKeys, facultyName, fmtDate, nowHHMM, slotLabel, subjectTitle, todayDay, weekOfSemester } from "./shared";
 
 type Tab = "today" | "week" | "sections" | "rooms" | "alerts" | "people";
 const FID_KEY = "tt_fid";
 const TABS: [Tab, string][] = [["today", "Today"], ["week", "My week"], ["sections", "Sections"], ["rooms", "Rooms"], ["alerts", "Alerts"], ["people", "Faculty"]];
 
-export function Portal() {
-  const [payload, setPayload] = useState<PublicPayload | null>(null);
+const TAB_KEY = "tt_tab";
+
+export function Portal({ initial }: { initial?: PublicPayload | null } = {}) {
+  const [payload, setPayload] = useState<PublicPayload | null>(initial ?? null);
   const [error, setError] = useState<string | null>(null);
   const [fid, setFid] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("today");
@@ -21,7 +24,7 @@ export function Portal() {
 
   const load = () => fetch("/api/timetable", { cache: "no-store" }).then((r) => r.json()).then(setPayload).catch((e) => setError(String(e)));
   useEffect(() => {
-    load();
+    if (!initial) load();
     const params = new URLSearchParams(window.location.search);
     const fromLink = params.get("f");
     try {
@@ -29,7 +32,8 @@ export function Portal() {
       else setFid(localStorage.getItem(FID_KEY));
     } catch { if (fromLink) setFid(fromLink); }
     if (params.get("alerts")) setTab("alerts");
-    if (params.get("reminders")) setTab("today");
+    else if (params.get("reminders")) setTab("today");
+    else { try { const t = localStorage.getItem(TAB_KEY) as Tab | null; if (t && TABS.some(([k]) => k === t)) setTab(t); } catch {} }
     const t = setInterval(() => setTick((x) => x + 1), 30000);
     const refresh = setInterval(load, 5 * 60000);
     return () => { clearInterval(t); clearInterval(refresh); };
@@ -48,6 +52,7 @@ export function Portal() {
   const myPrefs: Prefs | undefined = useMemo(() => payload?.prefs.find((p) => p.facultyId === me?.id), [payload, me]);
 
   const pick = (f: Faculty) => { try { localStorage.setItem(FID_KEY, f.id); } catch {} setFid(f.id); setPicking(false); };
+  const pickTab = (k: Tab) => { setTab(k); setJump(null); try { localStorage.setItem(TAB_KEY, k); } catch {} };
   const go = (kind: "section" | "room" | "faculty", id: string) => { setJump({ kind, id }); setTab(kind === "section" ? "sections" : kind === "room" ? "rooms" : "people"); setSearch(""); };
 
   if (error) return <Shell site={payload?.site}><div className="container"><div className="notice bad">Could not load the timetable: {error}</div></div></Shell>;
@@ -70,14 +75,15 @@ export function Portal() {
     <Shell site={payload.site} right={
       <>
         {weekInfo && <span className="pill">{weekInfo}</span>}
+        <ThemeToggle />
         <button className="btn sm who" onClick={() => setPicking(true)} title="Switch person">{me ? <><span className="avatar">{initials(me.name)}</span>{me.name}</> : "Choose your name"}</button>
       </>
     }>
       <div className="container">
         <div className="toolbar no-print">
-          <div className="tabs">
+          <div className="tabs" role="tablist" aria-label="Timetable views">
             {TABS.map(([k, label]) => (
-              <button key={k} className={`tab ${tab === k ? "active" : ""}`} onClick={() => { setTab(k); setJump(null); }}>{label}{k === "alerts" && unseen > 0 && <span className="badge">{unseen}</span>}</button>
+              <button key={k} role="tab" aria-selected={tab === k} className={`tab ${tab === k ? "active" : ""}`} onClick={() => pickTab(k)}>{label}{k === "alerts" && unseen > 0 && <span className="badge" aria-label={`${unseen} unseen`}>{unseen}</span>}</button>
             ))}
           </div>
           <div className="search-wrap">
@@ -136,7 +142,7 @@ function Shell({ children, site, right }: { children: React.ReactNode; site?: Pu
         <div className="topbar-inner">
           <div className="brand">
             <div className="brand-mark">TT</div>
-            <div><h1>JUIT Timetable</h1><div className="sub">{site?.department ?? "JUIT Solan"}</div></div>
+            <div><div className="brand-title">JUIT Timetable</div><div className="sub">{site?.department ?? "JUIT Solan"}</div></div>
           </div>
           <div className="topbar-actions">{right}</div>
         </div>
