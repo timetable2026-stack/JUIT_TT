@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DAYS, type Announcement, type Change, type Faculty, type Prefs, type PublicPayload, type Slot } from "@/lib/types";
 import { allSections, slotBatches } from "@/lib/exportGrid";
 import { ThemeToggle } from "./ThemeToggle";
+import { LoadingScreen } from "./LoadingScreen";
 import { DownloadButton, FacultyPicker, SlotModal, TimetableGrid, batchLabel, changedKeys, facultyName, fmtDate, nowHHMM, slotLabel, subjectTitle, todayDay, weekOfSemester } from "./shared";
 
 type Tab = "today" | "week" | "sections" | "rooms" | "alerts" | "people";
@@ -56,7 +57,7 @@ export function Portal({ initial }: { initial?: PublicPayload | null } = {}) {
   const go = (kind: "section" | "room" | "faculty", id: string) => { setJump({ kind, id }); setTab(kind === "section" ? "sections" : kind === "room" ? "rooms" : "people"); setSearch(""); };
 
   if (error) return <Shell site={payload?.site}><div className="container"><div className="notice bad">Could not load the timetable: {error}</div></div></Shell>;
-  if (!payload) return <Shell><div className="container"><div className="card muted">Loading timetable…</div></div></Shell>;
+  if (!payload) return <Shell><LoadingScreen /></Shell>;
   if (!data || !payload.version) return (
     <Shell site={payload.site}>
       <div className="container"><div className="card empty">

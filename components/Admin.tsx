@@ -4,6 +4,7 @@ import type { Ack, Announcement, Change, Dataset, EmailLogEntry, Faculty, Issue,
 import { ChangeRow } from "./Portal";
 import { TimetableGrid, changedKeys, fmtDate } from "./shared";
 import { ThemeToggle } from "./ThemeToggle";
+import { LoadingScreen } from "./LoadingScreen";
 
 interface VersionRow { id: number; status: string; createdAt: string; publishedAt?: string; note?: string; fileName?: string; summary: { slots: number; faculty: number; changes: number; affectedFaculty: number }; changes: Change[]; issues: Issue[]; faculty: Faculty[]; semesters: string[] }
 interface Status { admin: boolean; config?: { store: string; email: boolean; transport?: string; from: string | null; cron: boolean; site: { url: string; department: string; institute: string } }; versions?: VersionRow[]; emailLog?: EmailLogEntry[]; announcements?: Announcement[]; acks?: Ack[]; prefs?: Prefs[]; settings?: Settings }
@@ -27,7 +28,7 @@ export function Admin() {
   const reload = () => api<Status>("/api/admin/status").then(setStatus).catch((e) => setErr(e.message));
   useEffect(() => { reload(); }, []);
 
-  if (!status) return <AdminShell><div className="container"><div className="card muted">Loading…</div></div></AdminShell>;
+  if (!status) return <AdminShell><LoadingScreen message="Opening the TTC admin…" /></AdminShell>;
   if (!status.admin) return (
     <AdminShell>
       <div className="container" style={{ maxWidth: 440 }}>
