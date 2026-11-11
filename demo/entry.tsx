@@ -4,6 +4,7 @@
 import { createRoot } from "react-dom/client";
 import { useEffect, useState } from "react";
 import { Portal } from "../components/Portal";
+import { SplashScreen } from "../components/SplashScreen";
 import { Admin } from "../components/Admin";
 import { parseSheets, templateSheets, workbookToCells, workbookToSheets } from "../lib/excel";
 import { changesByFaculty, diffDatasets, summarize } from "../lib/diff";
@@ -272,7 +273,7 @@ function App() {
   return (
     <>
       <DemoBar onChange={() => setKey((k) => k + 1)} />
-      {hash === "#admin" ? <Admin key={"a" + key} /> : <Portal key={"p" + key} />}
+      {hash === "#admin" ? <Admin key={"a" + key} /> : <><SplashScreen /><Portal key={"p" + key} /></>}
     </>
   );
 }

@@ -1,4 +1,5 @@
 import { Portal } from "@/components/Portal";
+import { SplashScreen } from "@/components/SplashScreen";
 import { getPublicPayload } from "@/lib/publicPayload";
 import { allSections, allRooms } from "@/lib/exportGrid";
 
@@ -14,6 +15,7 @@ export default async function Page() {
   const fmt = (iso?: string) => (iso ? new Date(iso + "T00:00:00Z").toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) : "");
   return (
     <>
+      <SplashScreen />
       <section className="seo-intro" aria-label="About this timetable">
         <h1>JUIT Timetable — Time Table Committee</h1>
         <p>
