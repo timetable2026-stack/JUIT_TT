@@ -1,6 +1,7 @@
 // Public: a faculty member turns their own reminder and change emails on or off.
 // No login — the faculty id comes from their personal link, same as the rest of the portal.
 import { getStore } from "@/lib/store";
+import { invalidatePublicPayload } from "@/lib/publicPayload";
 
 export const dynamic = "force-dynamic";
 
@@ -15,5 +16,6 @@ export async function POST(req: Request) {
   if (typeof body.dailyReminder === "boolean") patch.dailyReminder = body.dailyReminder;
   if (typeof body.changeEmails === "boolean") patch.changeEmails = body.changeEmails;
   await store.setPrefs(facultyId, patch);
+  invalidatePublicPayload();
   return Response.json({ ok: true, prefs: await store.listPrefs() });
 }

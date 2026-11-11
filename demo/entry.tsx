@@ -165,7 +165,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     if (path === "/api/timetable") {
       const live = livePublished(db);
       const recent = db.versions.filter((v) => v.status !== "draft").sort((a, b) => b.id - a.id).slice(0, 8);
-      const payload: PublicPayload = { version: live ? { id: live.id, publishedAt: live.publishedAt!, note: live.note } : null, data: live?.data ?? null, changes: live?.changes ?? [], recentPublishes: recent.map((v) => ({ id: v.id, publishedAt: v.publishedAt!, note: v.note, changes: v.changes })), announcements: db.announcements.filter((a) => !a.expiresAt || Date.parse(a.expiresAt) > Date.now()).sort((a, b) => b.id - a.id), acks: db.acks, prefs: db.prefs, settings: settingsOf(db), site: SITE };
+      const payload: PublicPayload = { version: live ? { id: live.id, publishedAt: live.publishedAt!, note: live.note } : null, data: live?.data ?? null, changes: [], recentPublishes: recent.map((v) => ({ id: v.id, publishedAt: v.publishedAt!, note: v.note, changes: v.changes })), announcements: db.announcements.filter((a) => !a.expiresAt || Date.parse(a.expiresAt) > Date.now()).sort((a, b) => b.id - a.id), acks: db.acks, prefs: db.prefs, settings: settingsOf(db), site: SITE };
       return json(payload);
     }
     if (path === "/api/ack") { db.acks = db.acks.filter((a) => !(a.versionId === body.versionId && a.facultyId === body.facultyId)); db.acks.push({ versionId: body.versionId, facultyId: body.facultyId, seenAt: new Date().toISOString() }); save(db); return json({ ok: true }); }

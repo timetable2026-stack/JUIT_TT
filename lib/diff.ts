@@ -112,3 +112,9 @@ export function summarize(data: Dataset, changes: Change[]) {
 }
 
 function uniq<T>(xs: T[]) { return [...new Set(xs)]; }
+
+/** Keep only the slot fields any reader uses (alerts, reminders, admin grouping). */
+export function slimForStorage(changes: Change[]): Change[] {
+  const pick = (s?: Slot) => s ? ({ key: s.key, day: s.day, period: s.period, semester: s.semester, section: s.section, subjectCode: s.subjectCode, room: s.room, batch: s.batch } as Slot) : undefined;
+  return changes.map((c) => ({ ...c, before: pick(c.before), after: pick(c.after) }));
+}

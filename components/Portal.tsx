@@ -75,7 +75,6 @@ export function Portal({ initial }: { initial?: PublicPayload | null } = {}) {
     <Shell site={payload.site} right={
       <>
         {weekInfo && <span className="pill">{weekInfo}</span>}
-        <ThemeToggle />
         <button className="btn sm who" onClick={() => setPicking(true)} title="Switch person">{me ? <><span className="avatar">{initials(me.name)}</span>{me.name}</> : "Choose your name"}</button>
       </>
     }>
@@ -117,6 +116,10 @@ export function Portal({ initial }: { initial?: PublicPayload | null } = {}) {
   );
 }
 
+/** Changes of the version currently published (sent once, under its id in recentPublishes). */
+function liveChangesOf(p: PublicPayload): Change[] {
+  return p.changes.length ? p.changes : (p.recentPublishes.find((r) => r.id === p.version?.id)?.changes ?? []);
+}
 function initials(name: string) { return name.replace(/^(Dr|Prof|Mr|Ms|Mrs)\.?\s+/i, "").split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase(); }
 
 function searchAll(data: NonNullable<PublicPayload["data"]>, q: string) {
@@ -148,6 +151,7 @@ function Shell({ children, site, right }: { children: React.ReactNode; site?: Pu
         </div>
       </header>
       {children}
+      <ThemeToggle />
     </>
   );
 }
@@ -289,7 +293,7 @@ function audienceIncludes(a: Announcement, me: Faculty | null, payload: PublicPa
 }
 
 function MyWeek({ me, slots, payload, onCell }: { me: Faculty; slots: Slot[]; payload: PublicPayload; onCell: (s: Slot) => void }) {
-  const changed = changedKeys(payload.changes.filter((c) => c.affectedFacultyIds.includes(me.id)));
+  const changed = changedKeys(liveChangesOf(payload).filter((c) => c.affectedFacultyIds.includes(me.id)));
   return (
     <div className="card">
       <div className="row between">
@@ -308,7 +312,7 @@ function Sections({ payload, onCell, initial }: { payload: PublicPayload; onCell
   const [sel, setSel] = useState(initial ?? sections[0]?.id ?? "");
   useEffect(() => { if (initial) setSel(initial); }, [initial]);
   const slots = data.slots.filter((s) => slotBatches(s.batch).includes(sel));
-  const changed = changedKeys(payload.changes);
+  const changed = changedKeys(liveChangesOf(payload));
   const info = sections.find((x) => x.id === sel);
   const sem = data.semesters.find((s) => s.name === info?.group.split(",")[0].trim());
   const groups = [...new Set(sections.map((x) => x.group))];
@@ -357,7 +361,7 @@ function Rooms({ payload, onCell, initial }: { payload: PublicPayload; onCell: (
           <DownloadButton kind="room" id={room} label="Download" />
         </div>
       </div>
-      <TimetableGrid slots={slots} periods={data.periods} mode="room" changed={changedKeys(payload.changes)} onCell={onCell} />
+      <TimetableGrid slots={slots} periods={data.periods} mode="room" changed={changedKeys(liveChangesOf(payload))} onCell={onCell} />
       <p className="muted small" style={{ marginTop: 8 }}>Empty cells are free periods for this room — useful for extra classes and make-up sessions.</p>
     </div>
   );

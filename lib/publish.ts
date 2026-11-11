@@ -1,7 +1,7 @@
 // Publish pipeline shared by the publish and rollback routes:
 // recompute the diff against the live version, flip statuses, post alerts
 // (the changes themselves), and email only the affected faculty.
-import { changesByFaculty, diffDatasets, summarize } from "./diff";
+import { changesByFaculty, diffDatasets, slimForStorage, summarize } from "./diff";
 import { sendBatch, type Recipient } from "./email";
 import { changeEmail, firstPublishEmail, type EmailContent } from "./format";
 import { siteConfig } from "./site";
@@ -19,7 +19,7 @@ export async function publishDataset(opts: { data: Dataset; note?: string; fileN
   const live = await store.getPublished();
   const prefs = new Map((await store.listPrefs()).map((p) => [p.facultyId, p]));
   const wantsEmail = (id: string) => prefs.get(id)?.changeEmails !== false;
-  const changes = diffDatasets(live?.data ?? null, opts.data);
+  const changes = slimForStorage(diffDatasets(live?.data ?? null, opts.data));
   const now = new Date().toISOString();
 
   let version: Version;

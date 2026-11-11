@@ -1,5 +1,7 @@
 // Admin: post an announcement (portal alert, optionally emailed to the chosen audience).
+import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
+import { invalidatePublicPayload } from "@/lib/publicPayload";
 import { sendBatch } from "@/lib/email";
 import { announcementEmail } from "@/lib/format";
 import { siteConfig } from "@/lib/site";
@@ -34,6 +36,7 @@ async function handlePOST(req: Request) {
     await store.addEmailLog(log);
     emails = { sent: log.filter((l) => l.status === "sent").length, failed: log.filter((l) => l.status === "failed").length, skipped: log.filter((l) => l.status === "skipped").length, recipients: recipients.length };
   }
+  invalidatePublicPayload(); revalidatePath("/");
   return Response.json({ ok: true, announcement: ann, emails });
 }
 

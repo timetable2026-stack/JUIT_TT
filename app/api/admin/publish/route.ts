@@ -1,5 +1,7 @@
 // Admin: publish a draft (alerts + emails go out here).
+import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
+import { invalidatePublicPayload } from "@/lib/publicPayload";
 import { publishDataset } from "@/lib/publish";
 import { getStore } from "@/lib/store";
 
@@ -13,6 +15,7 @@ async function handlePOST(req: Request) {
   const draft = draftId ? await getStore().getVersion(draftId) : null;
   if (!draft || draft.status !== "draft") return Response.json({ error: "Draft not found (upload the file again)." }, { status: 404 });
   const result = await publishDataset({ data: draft.data, note: body.note ? String(body.note).slice(0, 500) : undefined, fileName: draft.fileName, issues: draft.issues, existingDraftId: draft.id, sendEmail: body.sendEmail !== false });
+  invalidatePublicPayload(); revalidatePath("/"); revalidatePath("/sitemap.xml");
   return Response.json({ ok: true, versionId: result.version.id, summary: result.version.summary, emails: result.emails });
 }
 

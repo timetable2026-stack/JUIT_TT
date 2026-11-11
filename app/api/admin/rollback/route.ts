@@ -1,5 +1,7 @@
 // Admin: republish an earlier version. It becomes a new version with its own diff and alerts.
+import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
+import { invalidatePublicPayload } from "@/lib/publicPayload";
 import { publishDataset } from "@/lib/publish";
 import { getStore } from "@/lib/store";
 
@@ -12,6 +14,7 @@ async function handlePOST(req: Request) {
   const target = await getStore().getVersion(Number(body.versionId));
   if (!target) return Response.json({ error: "Version not found" }, { status: 404 });
   const result = await publishDataset({ data: target.data, note: body.note ? String(body.note).slice(0, 500) : `Rolled back to version ${target.id}`, fileName: target.fileName, issues: target.issues, sendEmail: body.sendEmail !== false });
+  invalidatePublicPayload(); revalidatePath("/"); revalidatePath("/sitemap.xml");
   return Response.json({ ok: true, versionId: result.version.id, summary: result.version.summary, emails: result.emails });
 }
 

@@ -2,7 +2,7 @@
 // department's own day x period grid workbook, which is detected and converted
 // automatically so the TTC can upload the file it already maintains.
 import { requireAdmin } from "@/lib/auth";
-import { changesByFaculty, diffDatasets, summarize } from "@/lib/diff";
+import { changesByFaculty, diffDatasets, slimForStorage, summarize } from "@/lib/diff";
 import { parseSheets, workbookToCells, workbookToSheets, type RawRow } from "@/lib/excel";
 import { gridToSheets, guessTerm, looksLikeGrid, mergeFacultyDetails } from "@/lib/grid";
 import { getStore } from "@/lib/store";
@@ -61,7 +61,7 @@ async function handlePOST(req: Request) {
   if (parsed.ok) {
     const draft = await store.createVersion({
       status: "draft", createdAt: new Date().toISOString(), fileName: file.name,
-      data: parsed.data, changes, issues: parsed.issues, summary: summarize(parsed.data, changes),
+      data: parsed.data, changes: slimForStorage(changes), issues: parsed.issues, summary: summarize(parsed.data, changes),
     });
     draftId = draft.id;
   }

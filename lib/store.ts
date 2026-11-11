@@ -1,9 +1,10 @@
 // Persistence. Supabase (Postgres) in production; a JSON file in ./data for local
 // development when SUPABASE_URL is not set. Both expose the same interface.
-import { DEFAULT_SETTINGS, type Ack, type Announcement, type EmailLogEntry, type Prefs, type Settings, type Version } from "./types";
+import { DEFAULT_SETTINGS, type Ack, type Announcement, type EmailLogEntry, type Prefs, type Settings, type Version, type VersionSummary } from "./types";
 
 export interface Store {
-  listVersions(): Promise<Version[]>; // newest first, full rows
+  listVersions(): Promise<Version[]>; // newest first, full rows (heavy: avoid on hot paths)
+  listVersionSummaries(limit?: number): Promise<VersionSummary[]>; // newest first, no slot data
   getVersion(id: number): Promise<Version | null>;
   getPublished(): Promise<Version | null>;
   createVersion(v: Omit<Version, "id">): Promise<Version>;
@@ -35,6 +36,10 @@ function supabaseStore(url: string, key: string): Store {
   const rowToVersion = (r: any): Version => ({ id: r.id, status: r.status, createdAt: r.created_at, publishedAt: r.published_at ?? undefined, note: r.note ?? undefined, fileName: r.file_name ?? undefined, data: r.data, changes: r.changes ?? [], issues: r.issues ?? [], summary: r.summary });
   return {
     async listVersions() { return must(await (await sb()).from("versions").select("*").order("id", { ascending: false })).map(rowToVersion); },
+    async listVersionSummaries(limit = 50) {
+      const rows = must(await (await sb()).from("versions").select("id,status,created_at,published_at,note,file_name,changes,summary,faculty:data->faculty,semesters:data->semesters").order("id", { ascending: false }).limit(limit));
+      return rows.map((r: any): VersionSummary => ({ id: r.id, status: r.status, createdAt: r.created_at, publishedAt: r.published_at ?? undefined, note: r.note ?? undefined, fileName: r.file_name ?? undefined, changes: r.changes ?? [], summary: r.summary, faculty: r.faculty ?? [], semesters: (r.semesters ?? []).map((x: any) => x.name) }));
+    },
     async getVersion(id) { const rows = must(await (await sb()).from("versions").select("*").eq("id", id).limit(1)); return rows[0] ? rowToVersion(rows[0]) : null; },
     async getPublished() { const rows = must(await (await sb()).from("versions").select("*").eq("status", "published").order("id", { ascending: false }).limit(1)); return rows[0] ? rowToVersion(rows[0]) : null; },
     async createVersion(v) {
@@ -107,6 +112,9 @@ function fileStore(path: string): Store {
   const nextId = (xs: { id: number }[]) => xs.reduce((m, x) => Math.max(m, x.id), 0) + 1;
   return {
     async listVersions() { return (await load()).versions.slice().sort((a, b) => b.id - a.id); },
+    async listVersionSummaries(limit = 50) {
+      return (await load()).versions.slice().sort((a, b) => b.id - a.id).slice(0, limit).map((v): VersionSummary => ({ id: v.id, status: v.status, createdAt: v.createdAt, publishedAt: v.publishedAt, note: v.note, fileName: v.fileName, changes: v.changes, summary: v.summary, faculty: v.data.faculty, semesters: v.data.semesters.map((s) => s.name) }));
+    },
     async getVersion(id) { return (await load()).versions.find((v) => v.id === id) ?? null; },
     async getPublished() { return (await load()).versions.filter((v) => v.status === "published").sort((a, b) => b.id - a.id)[0] ?? null; },
     async createVersion(v) { const db = await load(); const row = { id: nextId(db.versions), ...v }; db.versions.push(row); await save(db); return row; },

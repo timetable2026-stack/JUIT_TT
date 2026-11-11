@@ -83,6 +83,20 @@ export interface Change {
 
 export type VersionStatus = "draft" | "published" | "superseded";
 
+/** A version without its slot data: enough for lists, history and the admin overview. */
+export interface VersionSummary {
+  id: number;
+  status: VersionStatus;
+  createdAt: string;
+  publishedAt?: string;
+  note?: string;
+  fileName?: string;
+  changes: Change[];
+  summary: { slots: number; faculty: number; changes: number; affectedFaculty: number };
+  faculty: Faculty[];
+  semesters: string[];
+}
+
 export interface Version {
   id: number;
   status: VersionStatus;

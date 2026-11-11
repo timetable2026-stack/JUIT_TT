@@ -72,8 +72,9 @@ export function Admin() {
 function AdminShell({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
   return (
     <>
-      <header className="topbar"><div className="topbar-inner"><div className="brand"><div className="brand-mark">TT</div><div><h1>Time Table Committee</h1><div className="sub">Upload · review · publish · remind</div></div></div><div className="topbar-actions"><ThemeToggle />{right}</div></div></header>
+      <header className="topbar"><div className="topbar-inner"><div className="brand"><div className="brand-mark">TT</div><div><h1>Time Table Committee</h1><div className="sub">Upload · review · publish · remind</div></div></div><div className="topbar-actions">{right}</div></div></header>
       <main id="main">{children}</main>
+      <ThemeToggle />
     </>
   );
 }

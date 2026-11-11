@@ -2,7 +2,8 @@ import { Portal } from "@/components/Portal";
 import { getPublicPayload } from "@/lib/publicPayload";
 import { allSections, allRooms } from "@/lib/exportGrid";
 
-export const dynamic = "force-dynamic";
+// Served from cache and rebuilt in the background; a publish or announcement revalidates it at once.
+export const revalidate = 60;
 
 // The page is rendered on the server with the live data, so the first paint is
 // complete (no "Loading…" flash) and search engines index real content.
