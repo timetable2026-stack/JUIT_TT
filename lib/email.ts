@@ -7,6 +7,8 @@ import type { EmailContent } from "./format";
 import type { EmailLogEntry } from "./types";
 
 export interface Recipient { facultyId: string; email: string; name: string }
+export interface Attachment { filename: string; content: Uint8Array; contentType?: string }
+export interface Outgoing { to: Recipient; content: EmailContent; attachments?: Attachment[] }
 
 export const OFFICE_EMAIL = "timetable2026@juitsolan.in";
 export const DEFAULT_FROM = `JUIT Time Table Committee <${OFFICE_EMAIL}>`;
@@ -21,7 +23,7 @@ export function emailTransport(): "smtp" | "resend" | "none" {
 }
 export function emailConfigured() { return emailTransport() !== "none"; }
 
-export async function sendBatch(kind: EmailLogEntry["kind"], refId: number, items: { to: Recipient; content: EmailContent }[]): Promise<Omit<EmailLogEntry, "id">[]> {
+export async function sendBatch(kind: EmailLogEntry["kind"], refId: number, items: Outgoing[]): Promise<Omit<EmailLogEntry, "id">[]> {
   const now = new Date().toISOString();
   if (!items.length) return [];
   const transport = emailTransport();
@@ -31,7 +33,7 @@ export async function sendBatch(kind: EmailLogEntry["kind"], refId: number, item
   return transport === "smtp" ? sendViaSmtp(kind, refId, items, now) : sendViaResend(kind, refId, items, now);
 }
 
-async function sendViaSmtp(kind: EmailLogEntry["kind"], refId: number, items: { to: Recipient; content: EmailContent }[], now: string) {
+async function sendViaSmtp(kind: EmailLogEntry["kind"], refId: number, items: Outgoing[], now: string) {
   const nodemailer = (await import("nodemailer")).default;
   const port = Number(process.env.SMTP_PORT || 465);
   const transporter = nodemailer.createTransport({
@@ -43,9 +45,10 @@ async function sendViaSmtp(kind: EmailLogEntry["kind"], refId: number, items: { 
   });
   const from = emailFrom(); const replyTo = emailReplyTo();
   const log: Omit<EmailLogEntry, "id">[] = [];
-  for (const { to, content } of items) {
+  for (const { to, content, attachments } of items) {
     try {
-      const info = await transporter.sendMail({ from, to: `${to.name} <${to.email}>`, replyTo, subject: content.subject, html: content.html, text: content.text });
+      const info = await transporter.sendMail({ from, to: `${to.name} <${to.email}>`, replyTo, subject: content.subject, html: content.html, text: content.text,
+        attachments: attachments?.map((a) => ({ filename: a.filename, content: Buffer.from(a.content), contentType: a.contentType ?? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })) });
       log.push({ createdAt: now, kind, refId, recipient: to.email, facultyId: to.facultyId, subject: content.subject, status: "sent", providerId: info?.messageId });
     } catch (err: any) {
       log.push({ createdAt: now, kind, refId, recipient: to.email, facultyId: to.facultyId, subject: content.subject, status: "failed", error: String(err?.message ?? err) });
@@ -55,7 +58,7 @@ async function sendViaSmtp(kind: EmailLogEntry["kind"], refId: number, items: { 
   return log;
 }
 
-async function sendViaResend(kind: EmailLogEntry["kind"], refId: number, items: { to: Recipient; content: EmailContent }[], now: string) {
+async function sendViaResend(kind: EmailLogEntry["kind"], refId: number, items: Outgoing[], now: string) {
   const { Resend } = await import("resend");
   const resend = new Resend(process.env.RESEND_API_KEY!);
   const from = emailFrom(); const replyTo = emailReplyTo();
@@ -63,14 +66,14 @@ async function sendViaResend(kind: EmailLogEntry["kind"], refId: number, items: 
   for (let i = 0; i < items.length; i += 100) {
     const chunk = items.slice(i, i + 100);
     try {
-      const res: any = await resend.batch.send(chunk.map(({ to, content }) => ({ from, to: [to.email], replyTo, subject: content.subject, html: content.html, text: content.text })));
+      const res: any = await resend.batch.send(chunk.map(({ to, content, attachments }) => ({ from, to: [to.email], replyTo, subject: content.subject, html: content.html, text: content.text, attachments: attachments?.map((a) => ({ filename: a.filename, content: Buffer.from(a.content).toString("base64") })) })));
       if (res.error) throw new Error(res.error.message ?? JSON.stringify(res.error));
       const ids: { id: string }[] = res.data?.data ?? res.data ?? [];
       chunk.forEach(({ to, content }, j) => log.push({ createdAt: now, kind, refId, recipient: to.email, facultyId: to.facultyId, subject: content.subject, status: "sent", providerId: ids[j]?.id }));
     } catch (e: any) {
-      for (const { to, content } of chunk) {
+      for (const { to, content, attachments } of chunk) {
         try {
-          const r: any = await resend.emails.send({ from, to: [to.email], replyTo, subject: content.subject, html: content.html, text: content.text });
+          const r: any = await resend.emails.send({ from, to: [to.email], replyTo, subject: content.subject, html: content.html, text: content.text, attachments: attachments?.map((a) => ({ filename: a.filename, content: Buffer.from(a.content).toString("base64") })) });
           if (r.error) throw new Error(r.error.message ?? JSON.stringify(r.error));
           log.push({ createdAt: now, kind, refId, recipient: to.email, facultyId: to.facultyId, subject: content.subject, status: "sent", providerId: r.data?.id });
         } catch (err: any) {

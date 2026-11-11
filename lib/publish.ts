@@ -2,8 +2,10 @@
 // recompute the diff against the live version, flip statuses, post alerts
 // (the changes themselves), and email only the affected faculty.
 import { changesByFaculty, diffDatasets, slimForStorage, summarize } from "./diff";
-import { sendBatch, type Recipient } from "./email";
-import { changeEmail, firstPublishEmail, type EmailContent } from "./format";
+import { sendBatch, type Attachment, type Outgoing } from "./email";
+import { buildExport } from "./exportGrid";
+import { writeXlsx } from "./xlsxWriter";
+import { changeEmail, firstPublishEmail } from "./format";
 import { siteConfig } from "./site";
 import { getStore } from "./store";
 import type { Dataset, Version } from "./types";
@@ -31,21 +33,26 @@ export async function publishDataset(opts: { data: Dataset; note?: string; fileN
   }
   if (live && live.id !== version.id) await store.updateVersion(live.id, { status: "superseded" });
 
-  // ---- Emails
-  const items: { to: Recipient; content: EmailContent }[] = [];
+  // ---- Emails, each with that person's timetable workbook attached (same file as "Download my week")
+  const items: Outgoing[] = [];
   const facById = new Map(opts.data.faculty.map((f) => [f.id, f]));
+  const JSZip = (await import("jszip")).default;
+  const workbookFor = async (facultyId: string): Promise<Attachment[]> => {
+    const ex = buildExport(opts.data, { kind: "faculty", id: facultyId }, version.id);
+    return [{ filename: ex.fileName, content: await writeXlsx(ex.workbook, JSZip) }];
+  };
   if (opts.sendEmail) {
     if (!live) {
       const semesterNames = opts.data.semesters.map((s) => s.name);
       for (const f of opts.data.faculty) {
         if (!f.email || !wantsEmail(f.id)) continue;
-        items.push({ to: { facultyId: f.id, email: f.email, name: f.name }, content: firstPublishEmail({ data: opts.data, faculty: f, siteUrl: site.url, department: site.department, institute: site.institute, note: opts.note, semesterNames }) });
+        items.push({ to: { facultyId: f.id, email: f.email, name: f.name }, content: firstPublishEmail({ data: opts.data, faculty: f, siteUrl: site.url, department: site.department, institute: site.institute, note: opts.note, semesterNames }), attachments: await workbookFor(f.id) });
       }
     } else {
       for (const [fid, mine] of changesByFaculty(changes)) {
         const f = facById.get(fid) ?? live.data.faculty.find((x) => x.id === fid);
         if (!f?.email || !wantsEmail(f.id)) continue;
-        items.push({ to: { facultyId: f.id, email: f.email, name: f.name }, content: changeEmail({ data: opts.data, faculty: f, changes: mine, siteUrl: site.url, department: site.department, institute: site.institute, note: opts.note, versionId: version.id }) });
+        items.push({ to: { facultyId: f.id, email: f.email, name: f.name }, content: changeEmail({ data: opts.data, faculty: f, changes: mine, siteUrl: site.url, department: site.department, institute: site.institute, note: opts.note, versionId: version.id }), attachments: await workbookFor(f.id) });
       }
     }
   }

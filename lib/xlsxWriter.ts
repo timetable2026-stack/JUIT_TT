@@ -15,7 +15,7 @@ export interface CellStyle {
 
 export interface Cell { v: string | number | null; s?: number }
 export interface Row { h?: number; cells: Cell[] }
-export interface Sheet { name: string; cols?: number[]; rows: Row[]; freeze?: string }
+export interface Sheet { name: string; cols?: number[]; rows: Row[]; freeze?: string; merges?: string[] }
 
 export interface Workbook {
   styles: CellStyle[];   // index 0 is the default
@@ -23,7 +23,7 @@ export interface Workbook {
 }
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-const colName = (i: number) => { let s = ""; let n = i; do { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } while (n >= 0); return s; };
+export const colName = (i: number) => { let s = ""; let n = i; do { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } while (n >= 0); return s; };
 
 function stylesXml(styles: CellStyle[]): string {
   const fonts: string[] = [];
@@ -73,9 +73,10 @@ function sheetXml(sheet: Sheet): string {
     return `<row r="${ri + 1}"${r.h ? ` ht="${r.h}" customHeight="1"` : ""}>${cells}</row>`;
   }).join("");
   const maxCols = Math.max(1, ...sheet.rows.map((r) => r.cells.length));
+  const merges = sheet.merges?.length ? `<mergeCells count="${sheet.merges.length}">${sheet.merges.map((m) => `<mergeCell ref="${m}"/>`).join("")}</mergeCells>` : "";
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-<dimension ref="A1:${colName(maxCols - 1)}${Math.max(1, sheet.rows.length)}"/>${pane}<sheetFormatPr defaultRowHeight="15"/>${cols}<sheetData>${rows}</sheetData>
+<dimension ref="A1:${colName(maxCols - 1)}${Math.max(1, sheet.rows.length)}"/>${pane}<sheetFormatPr defaultRowHeight="15"/>${cols}<sheetData>${rows}</sheetData>${merges}
 <pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.3" footer="0.3"/><pageSetup orientation="landscape" fitToWidth="1" fitToHeight="0"/>
 </worksheet>`;
 }

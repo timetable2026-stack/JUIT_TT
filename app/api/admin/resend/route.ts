@@ -2,6 +2,8 @@
 import { requireAdmin } from "@/lib/auth";
 import { changesByFaculty } from "@/lib/diff";
 import { sendBatch } from "@/lib/email";
+import { buildExport } from "@/lib/exportGrid";
+import { writeXlsx } from "@/lib/xlsxWriter";
 import { changeEmail, firstPublishEmail } from "@/lib/format";
 import { siteConfig } from "@/lib/site";
 import { getStore } from "@/lib/store";
@@ -19,11 +21,16 @@ export async function POST(req: Request) {
   const site = siteConfig();
   const byFac = changesByFaculty(v.changes);
   const targets = v.changes.length ? v.data.faculty.filter((f) => byFac.has(f.id)) : v.data.faculty;
-  const items = targets.filter((f) => f.email && !seen.has(f.id)).map((f) => ({
-    to: { facultyId: f.id, email: f.email, name: f.name },
-    content: v.changes.length
-      ? changeEmail({ data: v.data, faculty: f, changes: byFac.get(f.id)!, siteUrl: site.url, department: site.department, institute: site.institute, note: v.note, versionId: v.id })
-      : firstPublishEmail({ data: v.data, faculty: f, siteUrl: site.url, department: site.department, institute: site.institute, note: v.note, semesterNames: v.data.semesters.map((s) => s.name) }),
+  const JSZip = (await import("jszip")).default;
+  const items = await Promise.all(targets.filter((f) => f.email && !seen.has(f.id)).map(async (f) => {
+    const ex = buildExport(v.data, { kind: "faculty", id: f.id }, v.id);
+    return {
+      to: { facultyId: f.id, email: f.email, name: f.name },
+      content: v.changes.length
+        ? changeEmail({ data: v.data, faculty: f, changes: byFac.get(f.id)!, siteUrl: site.url, department: site.department, institute: site.institute, note: v.note, versionId: v.id })
+        : firstPublishEmail({ data: v.data, faculty: f, siteUrl: site.url, department: site.department, institute: site.institute, note: v.note, semesterNames: v.data.semesters.map((s) => s.name) }),
+      attachments: [{ filename: ex.fileName, content: await writeXlsx(ex.workbook, JSZip) }],
+    };
   }));
   const log = await sendBatch("reminder", v.id, items);
   await store.addEmailLog(log);

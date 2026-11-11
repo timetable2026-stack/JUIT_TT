@@ -70,6 +70,7 @@ export function firstPublishEmail(opts: { data: Dataset; faculty: Faculty; siteU
     <p style="margin:0 0 14px;line-height:1.55">The university timetable${term ? ` for <b>${esc(term)}</b>` : ""} is now published. Your classes, room and section timetables, the faculty directory and every future change are available at one permanent link. No password is needed; the link below opens your personal view.</p>
     <p style="margin:0 0 6px">${button(link, "Open my timetable")}</p>${linkLine(link)}
     ${opts.note ? note(opts.note) : ""}
+    <p style="margin:0 0 14px;line-height:1.55;font-size:14px;color:#5b6573">📎 Your personal timetable is attached as an Excel file in the TTC layout — the same file as “Download my week” on the portal.</p>
     <h3 style="margin:22px 0 8px;font-size:15px;color:${NAVY}">Your week — ${mine.length} period${mine.length === 1 ? "" : "s"}</h3>
     ${mine.length ? weekTableHtml(data, mine) : `<p style="color:#6b7684">No classes are assigned to you in this timetable.</p>`}
     <h3 style="margin:22px 0 6px;font-size:15px;color:${NAVY}">What to expect from now on</h3>
@@ -80,7 +81,7 @@ export function firstPublishEmail(opts: { data: Dataset; faculty: Faculty; siteU
     </ul>
     <p style="margin:18px 0 0;line-height:1.55">If anything in your timetable looks wrong, reply to this email and the Time Table Committee will correct it.</p>`;
   const html = shell({ department, institute: opts.institute, preheader: `${mine.length} periods this week. Open your personal timetable.`, body, footer: `You are receiving this because you are listed in the university timetable. Replies go to the Time Table Committee.` });
-  const text = `Dear ${salute(faculty)},\n\nThe university timetable${term ? ` for ${term}` : ""} is now published.\n\nOpen my timetable: ${link}\n${opts.note ? `\nNote from the TTC: ${opts.note}\n` : ""}\nYour week (${mine.length} periods):\n${mine.map((s) => `  ${s.day} P${s.period} ${s.start}-${s.end}  ${s.subjectCode}  ${s.semester}${s.batch ? " " + shortBatch(s.batch) : ""}  ${s.room}`).join("\n")}\n\nYou will be emailed when your classes change, and each teaching morning with that day's classes.\nCalendar subscription: ${icsLink(siteUrl, faculty.id)}\n\nIf anything looks wrong, reply to this email.`;
+  const text = `Dear ${salute(faculty)},\n\nThe university timetable${term ? ` for ${term}` : ""} is now published.\n\nOpen my timetable: ${link}\n${opts.note ? `\nNote from the TTC: ${opts.note}\n` : ""}\nYour week (${mine.length} periods):\n${mine.map((s) => `  ${s.day} P${s.period} ${s.start}-${s.end}  ${s.subjectCode}  ${s.semester}${s.batch ? " " + shortBatch(s.batch) : ""}  ${s.room}`).join("\n")}\n\nYour personal timetable is attached as an Excel file.\n\nYou will be emailed when your classes change, and each teaching morning with that day's classes.\nCalendar subscription: ${icsLink(siteUrl, faculty.id)}\n\nIf anything looks wrong, reply to this email.`;
   return { subject, html, text };
 }
 
@@ -97,6 +98,7 @@ export function changeEmail(opts: { data: Dataset; faculty: Faculty; changes: Ch
     <ol style="margin:0 0 16px;padding-left:22px;line-height:1.6">${changes.map((c) => `<li style="margin:4px 0">${esc(c.text)}</li>`).join("")}</ol>
     ${opts.note ? note(opts.note) : ""}
     <p style="margin:0 0 6px">${button(link, "View changes and mark as seen")}</p>${linkLine(link)}
+    <p style="margin:0 0 14px;line-height:1.55;font-size:14px;color:#5b6573">📎 Your updated timetable is attached as an Excel file in the TTC layout.</p>
     <h3 style="margin:22px 0 8px;font-size:15px;color:${NAVY}">Your updated week</h3>
     ${weekTableHtml(data, mine)}
     <p style="margin:18px 0 0;line-height:1.55">Please press <i>Mark as seen</i> on the page so the TTC knows the change reached you. If a change creates a clash for you, reply to this email.</p>`;

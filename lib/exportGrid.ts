@@ -25,8 +25,22 @@ export const STYLES: Workbook["styles"] = [
   { size: 8, color: "808080", fill: "F2F2F2", border: true, align: "center", wrap: true },            // "--"
   { bold: true, size: 8, color: "808080", fill: "F2F2F2", border: true, align: "center", wrap: true }, // LUNCH
   { size: 8, color: "808080", align: "center" },                                        // ~~~ separator
-  { bold: true, size: 11, align: "left" },                                              // sheet title (unused in blocks)
+  { bold: true, size: 14, align: "center" },                                            // sheet title row
 ];
+
+/** "Timetable 2026-2027 Even Sem" from the semester dates; override with NEXT_PUBLIC_TIMETABLE_TITLE. */
+export function timetableTitle(data: Dataset): string {
+  const env = typeof process !== "undefined" ? process.env?.NEXT_PUBLIC_TIMETABLE_TITLE : undefined;
+  if (env) return env;
+  const sem = data.semesters[0];
+  const startMonth = sem ? Number(sem.startDate.slice(5, 7)) : 1;
+  const even = startMonth <= 6; // January–June = even semester, July–December = odd
+  let year = sem?.academicYear ?? "";
+  const m = year.match(/^(\d{4})\s*[-–/]\s*(\d{2,4})$/);
+  if (m) year = `${m[1]}-${m[2].length === 2 ? m[1].slice(0, 2) + m[2] : m[2]}`;
+  else if (sem) { const y = Number(sem.startDate.slice(0, 4)); year = even ? `${y - 1}-${y}` : `${y}-${y + 1}`; }
+  return `Timetable ${year} ${even ? "Even" : "Odd"} Sem`.replace(/\s+/g, " ").trim();
+}
 
 /** "9:00 AM" from "09:00". */
 export function ampm(hhmm: string): string {
@@ -146,14 +160,17 @@ export function buildExport(data: Dataset, spec: ExportSpec, versionId: number):
     : spec.kind === "section" ? allSections(data).map((s) => s.id)
     : allRooms(data);
   const rows: Row[] = [];
+  // Title row across the whole sheet, e.g. "Timetable 2026-2027 Even Sem".
+  rows.push({ h: 28, cells: [{ v: timetableTitle(data), s: S.title }, ...Array.from({ length: width - 1 }, () => ({ v: null, s: S.title }))] });
   ids.forEach((id, i) => {
     if (i > 0) rows.push({ cells: Array.from({ length: width }, () => ({ v: "~~~~~~~", s: S.sep })) });
     rows.push(...buildBlock(data, { kind: spec.kind, id }));
   });
   const sheetName = spec.kind === "faculty" ? "Faculty Timetable" : spec.kind === "section" ? "Section Timetable" : "Room Timetable";
   const safe = exportTitle(data, spec).replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "");
+  const lastCol = String.fromCharCode(64 + width);
   return {
-    workbook: { styles: STYLES, sheets: [{ name: sheetName, cols: [11, ...Array(width - 1).fill(17)], rows, freeze: "B1" }] },
+    workbook: { styles: STYLES, sheets: [{ name: sheetName, cols: [11, ...Array(width - 1).fill(17)], rows, freeze: "B2", merges: [`A1:${lastCol}1`] }] },
     fileName: `${spec.kind === "faculty" ? "Faculty" : spec.kind === "section" ? "Section" : "Room"}_Timetable_${safe}_v${versionId}.xlsx`,
   };
 }
