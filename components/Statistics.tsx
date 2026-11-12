@@ -13,6 +13,7 @@ export function Statistics() {
   const [sort, setSort] = useState<keyof Stats["faculty"][number]>("load");
   const [dir, setDir] = useState<1 | -1>(-1);
   const [roomKind, setRoomKind] = useState("all");
+  const [heatGroup, setHeatGroup] = useState("all");
   useEffect(() => { api<Stats>("/api/admin/stats").then(setSt).catch((e) => setErr(e.message)); }, []);
 
   const rows = useMemo(() => {
@@ -27,7 +28,12 @@ export function Statistics() {
   const o = st.overall;
   const maxDept = Math.max(...st.departments.map((d) => d.avg), 1);
   const maxBucket = Math.max(...st.distribution.map((b) => b.count), 1);
-  const maxHeat = Math.max(...st.heatmap.flatMap((h) => h.periods.map((p) => p.classes)), 1);
+  const heatSel = heatGroup === "all" ? null : st.heatmapByGroup.find((g) => g.group === heatGroup) ?? null;
+  const heat = heatSel ? heatSel.heatmap : st.heatmap;
+  const maxHeat = Math.max(...heat.flatMap((h) => h.periods.map((p) => p.classes)), 1);
+  const sumHeat = (hm: typeof heat) => hm.reduce((a, h) => a + h.periods.reduce((x, p) => x + p.classes, 0), 0);
+  const heatTotal = sumHeat(heat); const heatTotalAll = sumHeat(st.heatmap);
+  const heatOptions = [{ value: "all", label: "All years", sub: `${heatTotalAll} classes/wk` }, ...st.heatmapByGroup.map((g) => ({ value: g.group, label: g.group, sub: `${g.classes} classes/wk · ${g.faculty} faculty` }))];
   const th = (key: keyof Stats["faculty"][number], label: string) => <th style={{ cursor: "pointer", whiteSpace: "nowrap" }} onClick={() => { if (sort === key) setDir((d) => (d === 1 ? -1 : 1)); else { setSort(key); setDir(key === "name" || key === "dept" || key === "id" ? 1 : -1); } }} aria-sort={sort === key ? (dir === 1 ? "ascending" : "descending") : "none"}>{label}{sort === key ? (dir === 1 ? " ▲" : " ▼") : ""}</th>;
   const vs = (n: number) => <span className={`pill ${n >= 25 ? "warn" : n <= -25 ? "info" : "good"}`}>{n > 0 ? "+" : ""}{n}%</span>;
   const rooms = st.rooms.filter((r) => roomKind === "all" || r.kind === roomKind);
@@ -76,12 +82,16 @@ export function Statistics() {
       </div>
 
       <div className="card">
-        <h3>Busiest hours — classes running in each period</h3>
+        <div className="row between" style={{ alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <h3 style={{ margin: 0 }}>Busiest hours — classes running in each period</h3>
+          <SearchSelect ariaLabel="Year group for the heatmap" value={heatGroup} options={heatOptions} onChange={setHeatGroup} placeholder="Search a year…" width={240} />
+        </div>
+        <p className="muted small" style={{ margin: "6px 0 10px" }}>{heatSel ? `${heatSel.group}: ${heatSel.classes} class periods a week, ${heatSel.faculty} faculty engaged.` : `All years: ${heatTotal} class periods a week.`}</p>
         <div className="table-wrap"><table className="heat">
-          <thead><tr><th>Day</th>{st.heatmap[0].periods.map((p) => <th key={p.period}>P{p.period}</th>)}</tr></thead>
-          <tbody>{st.heatmap.map((h) => <tr key={h.day}><td><b>{h.day}</b></td>{h.periods.map((p) => <td key={p.period} style={{ background: `color-mix(in srgb, var(--navy) ${Math.round((p.classes / maxHeat) * 70)}%, var(--card))`, color: p.classes / maxHeat > 0.5 ? "var(--on-navy)" : "var(--ink)" }}>{p.classes}</td>)}</tr>)}</tbody>
+          <thead><tr><th>Day</th>{heat[0].periods.map((p) => <th key={p.period}>P{p.period}</th>)}</tr></thead>
+          <tbody>{heat.map((h) => <tr key={h.day}><td><b>{h.day}</b></td>{h.periods.map((p) => <td key={p.period} style={{ background: `color-mix(in srgb, var(--navy) ${Math.round((p.classes / maxHeat) * 70)}%, var(--card))`, color: p.classes / maxHeat > 0.5 ? "var(--on-navy)" : "var(--ink)" }}>{p.classes}</td>)}</tr>)}</tbody>
         </table></div>
-        <p className="muted small" style={{ marginTop: 8 }}>Darker = more parallel classes, so more rooms and faculty engaged at once. Light columns are where extra classes fit most easily.</p>
+        <p className="muted small" style={{ marginTop: 8 }}>Darker = more parallel classes, so more rooms and faculty engaged at once. Light columns are where extra classes fit most easily. Pick a year to see when that batch is busy or free.</p>
       </div>
 
       <div className="card">

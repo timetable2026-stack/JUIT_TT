@@ -18,6 +18,8 @@ export interface DeptLoad {
   lectures: number; labs: number; tutorials: number; zeroLoad: number; share: number; // share of all periods, %
 }
 export interface RoomUse { room: string; used: number; capacity: number; pct: number; kind: "Classroom" | "Lab" | "Other"; busiestDay: string }
+export type Heatmap = { day: string; periods: { period: number; classes: number }[] }[];
+
 export interface Stats {
   generatedFor: { versionId: number; publishedAt?: string };
   overall: {
@@ -30,7 +32,9 @@ export interface Stats {
   distribution: { bucket: string; count: number }[];
   departments: DeptLoad[];
   faculty: FacultyLoad[];
-  heatmap: { day: string; periods: { period: number; classes: number }[] }[];
+  heatmap: Heatmap;
+  /** The same day × period grid for each year group, keyed by group name (e.g. "Year 2"). */
+  heatmapByGroup: { group: string; heatmap: Heatmap; classes: number; faculty: number }[];
   rooms: RoomUse[];
   groups: { group: string; classes: number; sections: number; avgPeriodsPerSection: number; faculty: number }[];
   flags: { kind: string; who: string; detail: string }[];
@@ -108,8 +112,10 @@ export function computeStats(data: Dataset, versionId: number, publishedAt?: str
   const buckets: [string, (n: number) => boolean][] = [["0", (n) => n === 0], ["1–5", (n) => n >= 1 && n <= 5], ["6–10", (n) => n >= 6 && n <= 10], ["11–15", (n) => n >= 11 && n <= 15], ["16–20", (n) => n >= 16 && n <= 20], ["21+", (n) => n >= 21]];
   const distribution = buckets.map(([bucket, test]) => ({ bucket, count: faculty.filter((f) => test(f.load)).length }));
 
-  // ---- heatmap day × period (distinct classes)
-  const heatmap = DAYS.map((day) => ({ day, periods: data.periods.map((p) => ({ period: p.number, classes: slots.filter((s) => s.day === day && s.period === p.number).length })) }));
+  // ---- heatmap day × period (distinct classes), overall and per year group
+  const heatOf = (ss: Slot[]): Heatmap => DAYS.map((day) => ({ day, periods: data.periods.map((p) => ({ period: p.number, classes: ss.filter((s) => s.day === day && s.period === p.number).length })) }));
+  const heatmap = heatOf(slots);
+  const heatmapByGroup = data.semesters.map((sem) => { const gs = slots.filter((s) => s.semester === sem.name); return { group: sem.name, heatmap: heatOf(gs), classes: gs.length, faculty: new Set(gs.flatMap((s) => s.facultyIds)).size }; });
 
   // ---- rooms
   const teachingPeriods = data.periods.filter((p) => !p.isBreak).length;
@@ -155,7 +161,7 @@ export function computeStats(data: Dataset, versionId: number, publishedAt?: str
     electiveSlots: slots.filter((s) => /\[/.test(s.batch ?? "")).length,
     avgSectionPeriods: r1(mean(sections.map((x) => x.load))),
   };
-  return { generatedFor: { versionId, publishedAt }, overall, distribution, departments, faculty, heatmap, rooms, groups, flags };
+  return { generatedFor: { versionId, publishedAt }, overall, distribution, departments, faculty, heatmap, heatmapByGroup, rooms, groups, flags };
 }
 
 /** Sheets for the Excel export of the statistics (arrays of arrays). */
@@ -173,7 +179,8 @@ export function statsToSheets(st: Stats): { name: string; rows: (string | number
     { name: "Departments", rows: [["Department", "Faculty", "Teaching", "Periods/wk", "Average", "Median", "Min", "Max", "Lectures", "Labs", "Tutorials", "No classes", "Share %"], ...st.departments.map((d) => [d.dept, d.faculty, d.teaching, d.periods, d.avg, d.median, d.min, d.max, d.lectures, d.labs, d.tutorials, d.zeroLoad, d.share])] },
     { name: "Faculty", rows: [["Code", "Name", "Department", "Load/wk", "Lectures", "Labs", "Tutorials", "Other", "Days", "Max in a day", "Busiest day", "Longest run", "Saturday", "Courses", "Sections", "vs average %"], ...st.faculty.map((f) => [f.id, f.name, f.dept, f.load, f.lectures, f.labs, f.tutorials, f.other, f.days, f.maxPerDay, f.busiestDay, f.longestRun, f.saturday, f.courses, f.sections, f.vsAvg])] },
     { name: "Rooms", rows: [["Room", "Type", "Used", "Capacity", "Utilisation %", "Busiest day"], ...st.rooms.map((r) => [r.room, r.kind, r.used, r.capacity, r.pct, r.busiestDay])] },
-    { name: "Day x Period", rows: [["Day", ...st.heatmap[0].periods.map((p) => `P${p.period}`)], ...st.heatmap.map((h) => [h.day, ...h.periods.map((p) => p.classes)])] },
+    { name: "Day x Period", rows: [["All years"], ["Day", ...st.heatmap[0].periods.map((p) => `P${p.period}`)], ...st.heatmap.map((h) => [h.day, ...h.periods.map((p) => p.classes)]),
+      ...st.heatmapByGroup.flatMap((g) => [[], [g.group], ["Day", ...g.heatmap[0].periods.map((p) => `P${p.period}`)], ...g.heatmap.map((h) => [h.day, ...h.periods.map((p) => p.classes)])])] },
     { name: "Year groups", rows: [["Group", "Classes/wk", "Sections", "Avg periods per section", "Faculty involved"], ...st.groups.map((g) => [g.group, g.classes, g.sections, g.avgPeriodsPerSection, g.faculty])] },
     { name: "Flags", rows: [["Kind", "Who", "Detail"], ...st.flags.map((f) => [f.kind, f.who, f.detail])] },
   ];
