@@ -2,10 +2,12 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Stats } from "@/lib/stats";
 import { SearchSelect } from "./SearchSelect";
+import { useSpace } from "./shared";
 
 async function api<T>(url: string): Promise<T> { const r = await fetch(url); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error ?? `Request failed (${r.status})`); return j as T; }
 
 export function Statistics() {
+  const { base } = useSpace();
   const [st, setSt] = useState<Stats | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -14,7 +16,7 @@ export function Statistics() {
   const [dir, setDir] = useState<1 | -1>(-1);
   const [roomKind, setRoomKind] = useState("all");
   const [heatGroup, setHeatGroup] = useState("all");
-  useEffect(() => { api<Stats>("/api/admin/stats").then(setSt).catch((e) => setErr(e.message)); }, []);
+  useEffect(() => { api<Stats>(`${base}/api/admin/stats`).then(setSt).catch((e) => setErr(e.message)); }, []);
 
   const rows = useMemo(() => {
     if (!st) return [];
@@ -43,7 +45,7 @@ export function Statistics() {
       <div className="card">
         <div className="row between">
           <div><h2>Load &amp; statistics</h2><p className="muted small" style={{ margin: "4px 0 0" }}>From timetable version {st.generatedFor.versionId}. Load = periods per week; a 2-period lab counts 2; a class taught by two people counts for each; TBA is excluded.</p></div>
-          <a className="btn primary sm" href="/api/admin/stats?format=xlsx" data-export="stats" download>⬇ Export all tables (Excel)</a>
+          <a className="btn primary sm" href={`${base}/api/admin/stats?format=xlsx`} data-export="stats" download>⬇ Export all tables (Excel)</a>
         </div>
         <div className="grid stats" style={{ marginTop: 14 }}>
           <div className="stat"><div className="n">{o.avgLoad}</div><div className="l">average load / week</div></div>

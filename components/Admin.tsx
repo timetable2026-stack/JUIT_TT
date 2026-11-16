@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Ack, Announcement, Change, Dataset, EmailLogEntry, Faculty, Issue, Prefs, Settings } from "@/lib/types";
 import { ChangeRow } from "./Portal";
-import { TimetableGrid, changedKeys, fmtDate } from "./shared";
+import { TimetableGrid, changedKeys, fmtDate, SpaceCtx, useSpace } from "./shared";
 import { ThemeToggle } from "./ThemeToggle";
 import { LoadingScreen } from "./LoadingScreen";
 import { Statistics } from "./Statistics";
@@ -22,26 +22,32 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
   return j as T;
 }
 
-export function Admin() {
+/** `base` = API prefix of this copy of the system ("" for the original, "/2026" for the current semester). */
+export function Admin({ base = "", spaceLabel }: { base?: string; spaceLabel?: string } = {}) {
+  return <SpaceCtx.Provider value={{ base, admin: base ? `${base}_admin` : "/admin" }}><AdminInner spaceLabel={spaceLabel} /></SpaceCtx.Provider>;
+}
+
+function AdminInner({ spaceLabel }: { spaceLabel?: string }) {
+  const { base } = useSpace();
   const [status, setStatus] = useState<Status | null>(null);
   const [section, setSection] = useState<Section>("overview");
   const [pw, setPw] = useState("");
   const [err, setErr] = useState<string | null>(null);
-  const reload = () => api<Status>("/api/admin/status").then(setStatus).catch((e) => setErr(e.message));
+  const reload = () => api<Status>(`${base}/api/admin/status`).then(setStatus).catch((e) => setErr(e.message));
   useEffect(() => { reload(); }, []);
 
-  if (!status) return <AdminShell><LoadingScreen message="Opening the TTC admin…" /></AdminShell>;
+  if (!status) return <AdminShell label={spaceLabel}><LoadingScreen message="Opening the TTC admin…" /></AdminShell>;
   if (!status.admin) return (
-    <AdminShell>
+    <AdminShell label={spaceLabel}>
       <div className="container" style={{ maxWidth: 440 }}>
         <div className="card">
           <h2>TTC sign-in</h2>
           <p className="muted small">Only the Time Table Committee signs in. Faculty open the portal without a password.</p>
-          <form onSubmit={async (e) => { e.preventDefault(); setErr(null); try { await api("/api/admin/login", { method: "POST", body: JSON.stringify({ password: pw }) }); setPw(""); reload(); } catch (x: any) { setErr(x.message); } }} className="stack">
+          <form onSubmit={async (e) => { e.preventDefault(); setErr(null); try { await api(`${base}/api/admin/login`, { method: "POST", body: JSON.stringify({ password: pw }) }); setPw(""); reload(); } catch (x: any) { setErr(x.message); } }} className="stack">
             <input id="admin-password" type="password" placeholder="Admin password" value={pw} onChange={(e) => setPw(e.target.value)} autoFocus />
             {err && <div className="notice bad small">{err}</div>}
             <button className="btn primary" type="submit">Sign in</button>
-            <a className="small" href="/">← Back to the portal</a>
+            <a className="small" href={base || "/"}>← Back to the portal</a>
           </form>
         </div>
       </div>
@@ -52,7 +58,7 @@ export function Admin() {
   const nav: [Section, string][] = [["overview", "Overview"], ["upload", "Upload & publish"], ["stats", "Load & statistics"], ["reminders", "Daily reminders"], ["announce", "Announcements"], ["reach", "Who has seen it"], ["versions", "Versions & rollback"], ["people", "People"], ["email", "Email log"], ["settings", "Setup"]];
 
   return (
-    <AdminShell right={<><a className="btn sm" href="/" target="_blank">Open portal ↗</a><button className="btn sm" onClick={async () => { await api("/api/admin/logout", { method: "POST" }); reload(); }}>Sign out</button></>}>
+    <AdminShell label={spaceLabel} right={<><a className="btn sm" href={base || "/"} target="_blank">Open portal ↗</a><button className="btn sm" onClick={async () => { await api(`${base}/api/admin/logout`, { method: "POST" }); reload(); }}>Sign out</button></>}>
       <div className="container sidebar-layout">
         <nav className="sidenav">{nav.map(([k, l]) => <button key={k} className={section === k ? "active" : ""} onClick={() => setSection(k)}>{l}</button>)}</nav>
         <main className="stack">
@@ -73,10 +79,10 @@ export function Admin() {
   );
 }
 
-function AdminShell({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
+function AdminShell({ children, right, label }: { children: React.ReactNode; right?: React.ReactNode; label?: string }) {
   return (
     <>
-      <header className="topbar"><div className="topbar-inner"><div className="brand"><div className="brand-mark">TT</div><div><h1>Time Table Committee</h1><div className="sub">Upload · review · publish · remind</div></div></div><div className="topbar-actions">{right}</div></div></header>
+      <header className="topbar"><div className="topbar-inner"><div className="brand"><div className="brand-mark">TT</div><div><h1>Time Table Committee{label ? <span className="pill info" style={{ marginLeft: 8, verticalAlign: "middle" }}>{label}</span> : null}</h1><div className="sub">Upload · review · publish · remind</div></div></div><div className="topbar-actions">{right}</div></div></header>
       <main id="main">{children}</main>
       <ThemeToggle />
     </>
@@ -85,6 +91,7 @@ function AdminShell({ children, right }: { children: React.ReactNode; right?: Re
 
 // ---------------------------------------------------------------- Overview
 function Overview({ status, live, go }: { status: Status; live: VersionRow | null; go: (s: Section) => void }) {
+  const { base } = useSpace();
   const c = status.config!;
   const unseen = live ? live.faculty.filter((f) => (live.changes.length === 0 || live.changes.some((ch) => ch.affectedFacultyIds.includes(f.id))) && !status.acks?.some((a) => a.versionId === live.id && a.facultyId === f.id)).length : 0;
   const noEmail = live ? live.faculty.filter((f) => !f.email).length : 0;
@@ -113,16 +120,16 @@ function Overview({ status, live, go }: { status: Status; live: VersionRow | nul
         </div>
         {live && <div className="row" style={{ marginTop: 12 }}>
           <span className="muted small">Download in the TTC layout:</span>
-          <a className="btn sm" href="/api/export?kind=faculty&id=all" data-export="faculty" data-export-id="all" download>⬇ All faculty</a>
-          <a className="btn sm" href="/api/export?kind=section&id=all" data-export="section" data-export-id="all" download>⬇ All sections</a>
-          <a className="btn sm" href="/api/export?kind=room&id=all" data-export="room" data-export-id="all" download>⬇ All rooms</a>
+          <a className="btn sm" href={`${base}/api/export?kind=faculty&id=all`} data-export="faculty" data-export-id="all" download>⬇ All faculty</a>
+          <a className="btn sm" href={`${base}/api/export?kind=section&id=all`} data-export="section" data-export-id="all" download>⬇ All sections</a>
+          <a className="btn sm" href={`${base}/api/export?kind=room&id=all`} data-export="room" data-export-id="all" download>⬇ All rooms</a>
         </div>}
         <div className="row" style={{ marginTop: 12 }}>
           <button className="btn" onClick={() => go("announce")}>Post an announcement</button>
           <button className="btn" onClick={() => go("reminders")}>Today's reminders</button>
           <button className="btn" onClick={() => go("stats")}>Load &amp; statistics</button>
-          <a className="btn" href="/api/admin/template?which=template">Blank template</a>
-          {live && <a className="btn" href="/api/admin/template?which=current">Current timetable as Excel</a>}
+          <a className="btn" href={`${base}/api/admin/template?which=template`}>Blank template</a>
+          {live && <a className="btn" href={`${base}/api/admin/template?which=current`}>Current timetable as Excel</a>}
         </div>
       </div>
       <div className="card">
@@ -137,6 +144,7 @@ function Overview({ status, live, go }: { status: Status; live: VersionRow | nul
 
 // ---------------------------------------------------------------- Upload
 function Upload({ live, onPublished }: { live: VersionRow | null; onPublished: () => void }) {
+  const { base } = useSpace();
   const [drag, setDrag] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [res, setRes] = useState<UploadResult | null>(null);
@@ -150,13 +158,13 @@ function Upload({ live, onPublished }: { live: VersionRow | null; onPublished: (
 
   const upload = async (file: File) => {
     setBusy("Reading the workbook…"); setErr(null); setRes(null); setDone(null); setConfirming(false);
-    try { const fd = new FormData(); fd.append("file", file); setRes(await api<UploadResult>("/api/admin/upload", { method: "POST", body: fd })); }
+    try { const fd = new FormData(); fd.append("file", file); setRes(await api<UploadResult>(`${base}/api/admin/upload`, { method: "POST", body: fd })); }
     catch (e: any) { setErr(e.message); } finally { setBusy(null); }
   };
   const publish = async () => {
     if (!res?.draftId) return;
     setBusy("Publishing…"); setErr(null);
-    try { const r = await api<any>("/api/admin/publish", { method: "POST", body: JSON.stringify({ draftId: res.draftId, note, sendEmail }) }); setDone(r); }
+    try { const r = await api<any>(`${base}/api/admin/publish`, { method: "POST", body: JSON.stringify({ draftId: res.draftId, note, sendEmail }) }); setDone(r); }
     catch (e: any) { setErr(e.message); } finally { setBusy(null); setConfirming(false); }
   };
 
@@ -191,8 +199,8 @@ function Upload({ live, onPublished }: { live: VersionRow | null; onPublished: (
           {busy ? <span><span className="spinner" /> {busy}</span> : <><b>Drop the .xlsx here</b> or click to choose a file</>}
         </label>
         <div className="row small muted" style={{ marginTop: 8 }}>
-          <a href="/api/admin/template?which=template">Blank row-format template</a>
-          {live && <>· <a href="/api/admin/template?which=current">Current timetable as Excel</a> (edit and re-upload)</>}
+          <a href={`${base}/api/admin/template?which=template`}>Blank row-format template</a>
+          {live && <>· <a href={`${base}/api/admin/template?which=current`}>Current timetable as Excel</a> (edit and re-upload)</>}
         </div>
         {err && <div className="notice bad" style={{ marginTop: 10 }}>{err}</div>}
       </div>
@@ -303,16 +311,17 @@ function IssueList({ issues }: { issues: Issue[] }) {
 interface Plan { date: string; day: string; label: string; skip: string | null; counts: { willEmail: number; noClasses: number; optedOut: number; noEmail: number }; recipients: { id: string; name: string; email: string; classes: number; subject: string }[]; preview: { id: string; name: string; subject: string; html: string } | null }
 
 function Reminders({ status, live, onDone }: { status: Status; live: VersionRow | null; onDone: () => void }) {
+  const { base } = useSpace();
   const s = status.settings!;
   const [plan, setPlan] = useState<Plan | null>(null);
   const [previewFor, setPreviewFor] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [holiday, setHoliday] = useState("");
-  const load = (pf?: string | null) => api<Plan>(`/api/admin/reminders${pf ? `?preview=${pf}` : ""}`).then(setPlan).catch((e) => setMsg(e.message));
+  const load = (pf?: string | null) => api<Plan>(`${base}/api/admin/reminders${pf ? `?preview=${pf}` : ""}`).then(setPlan).catch((e) => setMsg(e.message));
   useEffect(() => { load(previewFor); }, [previewFor]);
-  const saveSettings = async (patch: Partial<Settings>) => { setBusy(true); try { await api("/api/admin/reminders", { method: "POST", body: JSON.stringify({ action: "settings", ...patch }) }); onDone(); load(previewFor); } catch (e: any) { setMsg(e.message); } finally { setBusy(false); } };
-  const sendNow = async () => { setBusy(true); setMsg(null); try { const r = await api<any>("/api/admin/reminders", { method: "POST", body: JSON.stringify({ action: "send" }) }); setMsg(r.skip ? `Not sent: ${r.skip}` : `Sent ${r.sent}, skipped ${r.skipped}, failed ${r.failed} of ${r.planned}.`); onDone(); } catch (e: any) { setMsg(e.message); } finally { setBusy(false); } };
+  const saveSettings = async (patch: Partial<Settings>) => { setBusy(true); try { await api(`${base}/api/admin/reminders`, { method: "POST", body: JSON.stringify({ action: "settings", ...patch }) }); onDone(); load(previewFor); } catch (e: any) { setMsg(e.message); } finally { setBusy(false); } };
+  const sendNow = async () => { setBusy(true); setMsg(null); try { const r = await api<any>(`${base}/api/admin/reminders`, { method: "POST", body: JSON.stringify({ action: "send" }) }); setMsg(r.skip ? `Not sent: ${r.skip}` : `Sent ${r.sent}, skipped ${r.skipped}, failed ${r.failed} of ${r.planned}.`); onDone(); } catch (e: any) { setMsg(e.message); } finally { setBusy(false); } };
   const hours = Array.from({ length: 24 }, (_, h) => h);
 
   return (
@@ -376,13 +385,14 @@ function Reminders({ status, live, onDone }: { status: Status; live: VersionRow 
 
 // ---------------------------------------------------------------- Announce
 function Announce({ live, anns, onDone }: { live: VersionRow | null; anns: Announcement[]; onDone: () => void }) {
+  const { base } = useSpace();
   const [title, setTitle] = useState(""); const [body, setBody] = useState(""); const [email, setEmail] = useState(true);
   const [aud, setAud] = useState("all"); const [ids, setIds] = useState(""); const [expires, setExpires] = useState(""); const [msg, setMsg] = useState<string | null>(null); const [busy, setBusy] = useState(false);
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); setBusy(true); setMsg(null);
     try {
       const audience = aud === "all" ? { kind: "all" } : aud === "ids" ? { kind: "faculty", ids: ids.split(/[\s,;]+/).filter(Boolean) } : { kind: "semester", semester: aud.slice(4) };
-      const r = await api<any>("/api/admin/announce", { method: "POST", body: JSON.stringify({ title, body, email, audience, expiresAt: expires ? new Date(expires).toISOString() : undefined }) });
+      const r = await api<any>(`${base}/api/admin/announce`, { method: "POST", body: JSON.stringify({ title, body, email, audience, expiresAt: expires ? new Date(expires).toISOString() : undefined }) });
       setMsg(`Posted.${email ? ` Email: ${r.emails.sent} sent, ${r.emails.skipped} skipped, ${r.emails.failed} failed of ${r.emails.recipients}.` : ""}`); setTitle(""); setBody(""); onDone();
     } catch (x: any) { setMsg(x.message); } finally { setBusy(false); }
   };
@@ -412,11 +422,12 @@ function Announce({ live, anns, onDone }: { live: VersionRow | null; anns: Annou
 
 // ---------------------------------------------------------------- Versions
 function Versions({ versions, onDone }: { versions: VersionRow[]; onDone: () => void }) {
+  const { base } = useSpace();
   const [busy, setBusy] = useState<number | null>(null);
   const [confirmId, setConfirmId] = useState<number | null>(null);
   const rollback = async (v: VersionRow) => {
     setBusy(v.id);
-    try { await api("/api/admin/rollback", { method: "POST", body: JSON.stringify({ versionId: v.id }) }); onDone(); } catch (e: any) { alert(e.message); } finally { setBusy(null); setConfirmId(null); }
+    try { await api(`${base}/api/admin/rollback`, { method: "POST", body: JSON.stringify({ versionId: v.id }) }); onDone(); } catch (e: any) { alert(e.message); } finally { setBusy(null); setConfirmId(null); }
   };
   return (
     <div className="card">
@@ -431,6 +442,7 @@ function Versions({ versions, onDone }: { versions: VersionRow[]; onDone: () => 
 
 // ---------------------------------------------------------------- Reach
 function Reach({ versions, acks, onDone }: { versions: VersionRow[]; acks: Ack[]; onDone: () => void }) {
+  const { base } = useSpace();
   const pubs = versions.filter((v) => v.status !== "draft");
   const [sel, setSel] = useState(pubs[0]?.id ?? 0);
   const v = pubs.find((x) => x.id === sel);
@@ -439,7 +451,7 @@ function Reach({ versions, acks, onDone }: { versions: VersionRow[]; acks: Ack[]
   const affected = v.changes.length === 0 ? v.faculty : v.faculty.filter((f) => v.changes.some((c) => c.affectedFacultyIds.includes(f.id)));
   const seen = new Set(acks.filter((a) => a.versionId === v.id).map((a) => a.facultyId));
   const unseen = affected.filter((f) => !seen.has(f.id));
-  const resend = async () => { setBusy(true); setMsg(null); try { const r = await api<any>("/api/admin/resend", { method: "POST", body: JSON.stringify({ versionId: v.id }) }); setMsg(`Reminder: ${r.sent} sent, ${r.skipped} skipped, ${r.failed} failed of ${r.recipients}.`); onDone(); } catch (e: any) { setMsg(e.message); } finally { setBusy(false); } };
+  const resend = async () => { setBusy(true); setMsg(null); try { const r = await api<any>(`${base}/api/admin/resend`, { method: "POST", body: JSON.stringify({ versionId: v.id }) }); setMsg(`Reminder: ${r.sent} sent, ${r.skipped} skipped, ${r.failed} failed of ${r.recipients}.`); onDone(); } catch (e: any) { setMsg(e.message); } finally { setBusy(false); } };
   return (
     <div className="card">
       <div className="row between"><h2>Who has seen version {v.id}</h2><SearchSelect value={String(sel)} onChange={(v) => setSel(Number(v))} width={300} placeholder="Search version…" ariaLabel="Version" options={pubs.map((p) => ({ value: String(p.id), label: `Version ${p.id}`, sub: `${fmtDate(p.publishedAt)} · ${p.summary.changes} changes` }))} /></div>
@@ -453,6 +465,7 @@ function Reach({ versions, acks, onDone }: { versions: VersionRow[]; acks: Ack[]
 
 // ---------------------------------------------------------------- People
 function People({ live, acks, prefs }: { live: VersionRow | null; acks: Ack[]; prefs: Prefs[] }) {
+  const { base } = useSpace();
   const [q, setQ] = useState("");
   if (!live) return <div className="card muted">Publish a timetable first; the faculty list comes from its Faculty sheet.</div>;
   const everSeen = new Set(acks.map((a) => a.facultyId));
@@ -462,7 +475,7 @@ function People({ live, acks, prefs }: { live: VersionRow | null; acks: Ack[]; p
   return (
     <div className="card">
       <div className="row between"><h2>People ({live.faculty.length})</h2><input type="search" placeholder="Search…" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: 220 }} /></div>
-      <p className="muted small">This is the <b>Faculty</b> sheet of the live version. To add names or emails: <a href="/api/admin/template?which=current">download the current Excel</a>, fill the <b>Full name</b> and <b>Email</b> columns, and upload it again. Names and emails you have filled in are kept automatically when you upload a fresh grid-format master.</p>
+      <p className="muted small">This is the <b>Faculty</b> sheet of the live version. To add names or emails: <a href={`${base}/api/admin/template?which=current`}>download the current Excel</a>, fill the <b>Full name</b> and <b>Email</b> columns, and upload it again. Names and emails you have filled in are kept automatically when you upload a fresh grid-format master.</p>
       {noEmail > 0 && <div className="notice warn small" style={{ margin: "8px 0" }}><b>{noEmail} faculty have no email address</b> and cannot receive alerts or reminders.</div>}
       <div className="table-wrap"><table><thead><tr><th>ID</th><th>Name</th><th>Dept</th><th>Email</th><th>Morning reminder</th><th>Change alerts</th><th>Used portal</th></tr></thead>
         <tbody>{list.map((f) => { const p = pref.get(f.id); return <tr key={f.id}><td className="mono small">{f.id}</td><td><b>{f.name}</b>{f.onLeave ? <span className="pill warn" style={{ marginLeft: 6 }}>on leave</span> : null}</td><td className="small">{f.department}</td><td className="small">{f.email || <span className="pill warn">missing</span>}</td><td>{p?.dailyReminder === false ? <span className="pill light">off</span> : <span className="pill good">on</span>}</td><td>{p?.changeEmails === false ? <span className="pill light">off</span> : <span className="pill good">on</span>}</td><td>{everSeen.has(f.id) ? <span className="pill good">Yes</span> : <span className="pill light">Not yet</span>}</td></tr>; })}</tbody></table></div>
@@ -486,9 +499,10 @@ function EmailLog({ log }: { log: EmailLogEntry[] }) {
 
 // ---------------------------------------------------------------- Setup
 function Setup({ status }: { status: Status }) {
+  const { base } = useSpace();
   const c = status.config!;
   const [to, setTo] = useState("gaurav.negi@juitsolan.in"); const [msg, setMsg] = useState<string | null>(null); const [busy, setBusy] = useState(false);
-  const test = async () => { setBusy(true); setMsg(null); try { const r = await api<any>("/api/admin/test-email", { method: "POST", body: JSON.stringify({ to }) }); setMsg(r.ok ? `Sent via ${r.transport}. Check the inbox (and spam) of ${to}.` : `Not sent: ${r.error}`); } catch (e: any) { setMsg(e.message); } finally { setBusy(false); } };
+  const test = async () => { setBusy(true); setMsg(null); try { const r = await api<any>(`${base}/api/admin/test-email`, { method: "POST", body: JSON.stringify({ to }) }); setMsg(r.ok ? `Sent via ${r.transport}. Check the inbox (and spam) of ${to}.` : `Not sent: ${r.error}`); } catch (e: any) { setMsg(e.message); } finally { setBusy(false); } };
   return (
     <div className="card">
       <h2>Setup</h2>

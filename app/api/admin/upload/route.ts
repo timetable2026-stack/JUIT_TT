@@ -2,6 +2,7 @@
 // department's own day x period grid workbook, which is detected and converted
 // automatically so the TTC can upload the file it already maintains.
 import { requireAdmin } from "@/lib/auth";
+import { spaceOf } from "@/lib/space";
 import { changesByFaculty, diffDatasets, slimForStorage, summarize } from "@/lib/diff";
 import { parseSheets, workbookToCells, workbookToSheets, type RawRow } from "@/lib/excel";
 import { gridToSheets, guessTerm, looksLikeGrid, mergeFacultyDetails } from "@/lib/grid";
@@ -25,7 +26,7 @@ async function handlePOST(req: Request) {
     return Response.json({ error: `That file could not be opened as a spreadsheet (${e?.message ?? e}). Save it from Excel as .xlsx and try again.` }, { status: 400 });
   }
 
-  const store = getStore();
+  const store = getStore(spaceOf(req));
   const live = await store.getPublished();
 
   // Which layout is this? Row format has a sheet literally named "Timetable".

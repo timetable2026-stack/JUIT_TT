@@ -1,5 +1,6 @@
 // Persistence. Supabase (Postgres) in production; a JSON file in ./data for local
 // development when SUPABASE_URL is not set. Both expose the same interface.
+import { DEFAULT_SPACE, type Space } from "./space";
 import { DEFAULT_SETTINGS, type Ack, type Announcement, type EmailLogEntry, type Prefs, type Settings, type Version, type VersionSummary } from "./types";
 
 export interface Store {
@@ -22,7 +23,8 @@ export interface Store {
 }
 
 // ---------------- Supabase ----------------
-function supabaseStore(url: string, key: string): Store {
+function supabaseStore(url: string, key: string, suffix = ""): Store {
+  const t = (name: string) => name + suffix;
   // Lazy import keeps the browser bundle free of supabase-js.
   let client: any;
   const sb = async () => {
@@ -35,15 +37,15 @@ function supabaseStore(url: string, key: string): Store {
   const must = (r: { data: any; error: any }): any => { if (r.error) throw new Error(r.error.message ?? String(r.error)); return r.data; };
   const rowToVersion = (r: any): Version => ({ id: r.id, status: r.status, createdAt: r.created_at, publishedAt: r.published_at ?? undefined, note: r.note ?? undefined, fileName: r.file_name ?? undefined, data: r.data, changes: r.changes ?? [], issues: r.issues ?? [], summary: r.summary });
   return {
-    async listVersions() { return must(await (await sb()).from("versions").select("*").order("id", { ascending: false })).map(rowToVersion); },
+    async listVersions() { return must(await (await sb()).from(t("versions")).select("*").order("id", { ascending: false })).map(rowToVersion); },
     async listVersionSummaries(limit = 50) {
-      const rows = must(await (await sb()).from("versions").select("id,status,created_at,published_at,note,file_name,changes,summary,faculty:data->faculty,semesters:data->semesters").order("id", { ascending: false }).limit(limit));
+      const rows = must(await (await sb()).from(t("versions")).select("id,status,created_at,published_at,note,file_name,changes,summary,faculty:data->faculty,semesters:data->semesters").order("id", { ascending: false }).limit(limit));
       return rows.map((r: any): VersionSummary => ({ id: r.id, status: r.status, createdAt: r.created_at, publishedAt: r.published_at ?? undefined, note: r.note ?? undefined, fileName: r.file_name ?? undefined, changes: r.changes ?? [], summary: r.summary, faculty: r.faculty ?? [], semesters: (r.semesters ?? []).map((x: any) => x.name) }));
     },
-    async getVersion(id) { const rows = must(await (await sb()).from("versions").select("*").eq("id", id).limit(1)); return rows[0] ? rowToVersion(rows[0]) : null; },
-    async getPublished() { const rows = must(await (await sb()).from("versions").select("*").eq("status", "published").order("id", { ascending: false }).limit(1)); return rows[0] ? rowToVersion(rows[0]) : null; },
+    async getVersion(id) { const rows = must(await (await sb()).from(t("versions")).select("*").eq("id", id).limit(1)); return rows[0] ? rowToVersion(rows[0]) : null; },
+    async getPublished() { const rows = must(await (await sb()).from(t("versions")).select("*").eq("status", "published").order("id", { ascending: false }).limit(1)); return rows[0] ? rowToVersion(rows[0]) : null; },
     async createVersion(v) {
-      const rows = must(await (await sb()).from("versions").insert({ status: v.status, created_at: v.createdAt, published_at: v.publishedAt ?? null, note: v.note ?? null, file_name: v.fileName ?? null, data: v.data, changes: v.changes, issues: v.issues, summary: v.summary }).select("*"));
+      const rows = must(await (await sb()).from(t("versions")).insert({ status: v.status, created_at: v.createdAt, published_at: v.publishedAt ?? null, note: v.note ?? null, file_name: v.fileName ?? null, data: v.data, changes: v.changes, issues: v.issues, summary: v.summary }).select("*"));
       return rowToVersion(rows[0]);
     },
     async updateVersion(id, patch) {
@@ -53,42 +55,42 @@ function supabaseStore(url: string, key: string): Store {
       if (patch.note !== undefined) row.note = patch.note;
       if (patch.changes) row.changes = patch.changes;
       if (patch.summary) row.summary = patch.summary;
-      must(await (await sb()).from("versions").update(row).eq("id", id));
+      must(await (await sb()).from(t("versions")).update(row).eq("id", id));
     },
     async listAcks(versionIds) {
-      let q = (await sb()).from("acks").select("*");
+      let q = (await sb()).from(t("acks")).select("*");
       if (versionIds?.length) q = q.in("version_id", versionIds);
       return must(await q).map((r: any) => ({ versionId: r.version_id, facultyId: r.faculty_id, seenAt: r.seen_at }));
     },
-    async addAck(a) { must(await (await sb()).from("acks").upsert({ version_id: a.versionId, faculty_id: a.facultyId, seen_at: a.seenAt }, { onConflict: "version_id,faculty_id" })); },
-    async listAnnouncements() { return must(await (await sb()).from("announcements").select("*").order("id", { ascending: false })).map((r: any) => ({ id: r.id, createdAt: r.created_at, title: r.title, body: r.body, audience: r.audience, emailed: r.emailed, expiresAt: r.expires_at ?? undefined })); },
+    async addAck(a) { must(await (await sb()).from(t("acks")).upsert({ version_id: a.versionId, faculty_id: a.facultyId, seen_at: a.seenAt }, { onConflict: "version_id,faculty_id" })); },
+    async listAnnouncements() { return must(await (await sb()).from(t("announcements")).select("*").order("id", { ascending: false })).map((r: any) => ({ id: r.id, createdAt: r.created_at, title: r.title, body: r.body, audience: r.audience, emailed: r.emailed, expiresAt: r.expires_at ?? undefined })); },
     async createAnnouncement(a) {
-      const rows = must(await (await sb()).from("announcements").insert({ created_at: a.createdAt, title: a.title, body: a.body, audience: a.audience, emailed: a.emailed, expires_at: a.expiresAt ?? null }).select("*"));
+      const rows = must(await (await sb()).from(t("announcements")).insert({ created_at: a.createdAt, title: a.title, body: a.body, audience: a.audience, emailed: a.emailed, expires_at: a.expiresAt ?? null }).select("*"));
       const r = rows[0];
       return { id: r.id, createdAt: r.created_at, title: r.title, body: r.body, audience: r.audience, emailed: r.emailed, expiresAt: r.expires_at ?? undefined };
     },
-    async listEmailLog(limit = 500) { return must(await (await sb()).from("email_log").select("*").order("id", { ascending: false }).limit(limit)).map((r: any) => ({ id: r.id, createdAt: r.created_at, kind: r.kind, refId: r.ref_id, recipient: r.recipient, facultyId: r.faculty_id, subject: r.subject, status: r.status, providerId: r.provider_id ?? undefined, error: r.error ?? undefined })); },
+    async listEmailLog(limit = 500) { return must(await (await sb()).from(t("email_log")).select("*").order("id", { ascending: false }).limit(limit)).map((r: any) => ({ id: r.id, createdAt: r.created_at, kind: r.kind, refId: r.ref_id, recipient: r.recipient, facultyId: r.faculty_id, subject: r.subject, status: r.status, providerId: r.provider_id ?? undefined, error: r.error ?? undefined })); },
     async addEmailLog(entries) {
       if (!entries.length) return;
-      must(await (await sb()).from("email_log").insert(entries.map((e) => ({ created_at: e.createdAt, kind: e.kind, ref_id: e.refId, recipient: e.recipient, faculty_id: e.facultyId, subject: e.subject, status: e.status, provider_id: e.providerId ?? null, error: e.error ?? null }))));
+      must(await (await sb()).from(t("email_log")).insert(entries.map((e) => ({ created_at: e.createdAt, kind: e.kind, ref_id: e.refId, recipient: e.recipient, faculty_id: e.facultyId, subject: e.subject, status: e.status, provider_id: e.providerId ?? null, error: e.error ?? null }))));
     },
     async listPrefs() {
-      return must(await (await sb()).from("prefs").select("*")).map((r: any) => ({ facultyId: r.faculty_id, dailyReminder: r.daily_reminder, changeEmails: r.change_emails, updatedAt: r.updated_at }));
+      return must(await (await sb()).from(t("prefs")).select("*")).map((r: any) => ({ facultyId: r.faculty_id, dailyReminder: r.daily_reminder, changeEmails: r.change_emails, updatedAt: r.updated_at }));
     },
     async setPrefs(facultyId, patch) {
       const row: any = { faculty_id: facultyId, updated_at: new Date().toISOString() };
       if (patch.dailyReminder !== undefined) row.daily_reminder = patch.dailyReminder;
       if (patch.changeEmails !== undefined) row.change_emails = patch.changeEmails;
-      must(await (await sb()).from("prefs").upsert(row, { onConflict: "faculty_id" }));
+      must(await (await sb()).from(t("prefs")).upsert(row, { onConflict: "faculty_id" }));
     },
     async getSettings() {
-      const rows = must(await (await sb()).from("settings").select("*").eq("id", 1).limit(1));
+      const rows = must(await (await sb()).from(t("settings")).select("*").eq("id", 1).limit(1));
       return { ...DEFAULT_SETTINGS, ...(rows[0]?.value ?? {}) };
     },
     async saveSettings(patch) {
       const current = await this.getSettings();
       const next = { ...current, ...patch };
-      must(await (await sb()).from("settings").upsert({ id: 1, value: next }, { onConflict: "id" }));
+      must(await (await sb()).from(t("settings")).upsert({ id: 1, value: next }, { onConflict: "id" }));
       return next;
     },
   };
@@ -142,17 +144,20 @@ function fileStore(path: string): Store {
 /** JUIT's Supabase project. Override with SUPABASE_URL if the project ever moves. */
 const DEFAULT_SUPABASE_URL = "https://pnrbebxwyzopepdbqexc.supabase.co";
 
-let singleton: Store | null = null;
-export function getStore(): Store {
-  if (singleton) return singleton;
+const singletons = new Map<string, Store>();
+export function getStore(space: Space = DEFAULT_SPACE): Store {
+  const have = singletons.get(space.id);
+  if (have) return have;
   // The project URL is public information, so it has a default; the secret key never does.
   const url = process.env.SUPABASE_URL || DEFAULT_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   // On Vercel the project folder is read-only; only /tmp is writable, and it is wiped on
   // every deploy and not shared between instances. Fine for a first look, not for real use.
-  const fallbackPath = process.env.LOCAL_DB_PATH ?? (process.env.VERCEL ? "/tmp/juit-timetable-db.json" : `${process.cwd()}/data/db.json`);
-  singleton = url && key ? supabaseStore(url, key) : fileStore(fallbackPath);
-  return singleton;
+  const base = process.env.LOCAL_DB_PATH ?? (process.env.VERCEL ? "/tmp/juit-timetable-db.json" : `${process.cwd()}/data/db.json`);
+  const fallbackPath = space.suffix ? base.replace(/\.json$/, `${space.suffix}.json`) : base;
+  const store = url && key ? supabaseStore(url, key, space.suffix) : fileStore(fallbackPath);
+  singletons.set(space.id, store);
+  return store;
 }
 
 export function storeKind(): "supabase" | "local-file" | "ephemeral" {

@@ -1,5 +1,11 @@
 "use client";
+import { createContext, useContext } from "react";
 import { DAYS, type Change, type Dataset, type Faculty, type Period, type Slot } from "@/lib/types";
+
+/** Which copy of the system this UI belongs to: `base` prefixes every API URL ("" for the
+ *  original site, "/2026" for the current-semester copy); `admin` is that copy's admin path. */
+export const SpaceCtx = createContext<{ base: string; admin: string }>({ base: "", admin: "/admin" });
+export const useSpace = () => useContext(SpaceCtx);
 
 export const fmtDate = (iso?: string) => (iso ? new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" }) : "");
 export const fmtDay = (iso?: string) => (iso ? new Date(iso + (iso.length === 10 ? "T00:00:00" : "")).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "");
@@ -107,7 +113,8 @@ export function TimetableGrid({ slots, periods, mode, changed, onCell, showDays 
 /** Excel download of a faculty member's, class's or room's week, in the department's own cell convention.
  *  A plain link on the deployed site; the preview build intercepts `data-export` and builds the file in the browser. */
 export function DownloadButton({ kind, id, label = "Download", primary = false }: { kind: "faculty" | "section" | "room"; id: string; label?: string; primary?: boolean }) {
-  const href = `/api/export?kind=${kind}&id=${encodeURIComponent(id)}`;
+  const { base } = useSpace();
+  const href = `${base}/api/export?kind=${kind}&id=${encodeURIComponent(id)}`;
   return <a className={`btn sm ${primary ? "primary" : ""}`} href={href} data-export={kind} data-export-id={id} download title="Excel in the TTC's timetable layout">⬇ {label}</a>;
 }
 

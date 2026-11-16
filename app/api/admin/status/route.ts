@@ -1,5 +1,6 @@
 // Admin: is the session valid, and what is configured on the server.
 import { isAdmin } from "@/lib/auth";
+import { spaceOf } from "@/lib/space";
 import { emailConfigured, emailFrom, emailTransport } from "@/lib/email";
 import { siteConfig } from "@/lib/site";
 import { getStore, storeKind } from "@/lib/store";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   const admin = isAdmin(req);
   if (!admin) return Response.json({ admin: false });
-  const store = getStore();
+  const store = getStore(spaceOf(req));
   const [versions, emailLog, announcements, acks, prefs, settings] = await Promise.all([
     store.listVersionSummaries(60), store.listEmailLog(300), store.listAnnouncements(), store.listAcks(), store.listPrefs(), store.getSettings(),
   ]);

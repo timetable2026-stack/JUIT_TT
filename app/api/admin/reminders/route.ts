@@ -1,6 +1,7 @@
 // Admin: see exactly who today's reminder would reach, preview one message,
 // send the run by hand, and change the reminder settings.
 import { requireAdmin } from "@/lib/auth";
+import { spaceOf } from "@/lib/space";
 import { planDailyReminders, sendDailyReminders } from "@/lib/runReminders";
 import { getStore } from "@/lib/store";
 
@@ -13,7 +14,7 @@ async function handleGET(req: Request) {
   const url = new URL(req.url);
   const when = url.searchParams.get("date");
   const at = when ? new Date(`${when}T06:00:00+05:30`) : new Date();
-  const plan = await planDailyReminders(at);
+  const plan = await planDailyReminders(at, spaceOf(req));
   const previewFor = url.searchParams.get("preview");
   const pick = previewFor ? plan.recipients.find((r) => r.faculty.id === previewFor) : plan.recipients[0];
   return Response.json({
@@ -28,7 +29,7 @@ async function handlePOST(req: Request) {
   const denied = requireAdmin(req); if (denied) return denied;
   const body = await req.json().catch(() => ({}));
   if (body.action === "send") {
-    const r = await sendDailyReminders();
+    const r = await sendDailyReminders(new Date(), spaceOf(req));
     return Response.json({ ok: true, skip: r.skip, planned: r.recipients.length, sent: r.sent, failed: r.failed, skipped: r.skipped });
   }
   if (body.action === "settings") {
@@ -38,7 +39,7 @@ async function handlePOST(req: Request) {
     if (Array.isArray(body.reminderDays)) patch.reminderDays = body.reminderDays.map(String);
     if (Array.isArray(body.holidays)) patch.holidays = [...new Set(body.holidays.map(String))].sort();
     if (typeof body.remindOnlyWithClasses === "boolean") patch.remindOnlyWithClasses = body.remindOnlyWithClasses;
-    return Response.json({ ok: true, settings: await getStore().saveSettings(patch) });
+    return Response.json({ ok: true, settings: await getStore(spaceOf(req)).saveSettings(patch) });
   }
   return Response.json({ error: "Unknown action" }, { status: 400 });
 }

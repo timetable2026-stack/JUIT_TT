@@ -3,6 +3,7 @@ import { sendBatch, type Recipient } from "./email";
 import type { EmailContent } from "./format";
 import { dailyReminderEmail, istNow, slotsOnDay, withinTerm } from "./reminders";
 import { siteConfig } from "./site";
+import { DEFAULT_SPACE, siteUrlFor, type Space } from "./space";
 import { getStore } from "./store";
 import type { Faculty } from "./types";
 
@@ -18,8 +19,8 @@ export interface ReminderPlan {
 }
 
 /** Work out exactly who would be emailed today and what each message says. */
-export async function planDailyReminders(at: Date = new Date()): Promise<ReminderPlan> {
-  const store = getStore();
+export async function planDailyReminders(at: Date = new Date(), space: Space = DEFAULT_SPACE): Promise<ReminderPlan> {
+  const store = getStore(space);
   const { date, day, label } = istNow(at);
   const base: ReminderPlan = { date, day, label, skip: null, recipients: [], noClasses: 0, optedOut: 0, noEmail: 0 };
 
@@ -35,7 +36,7 @@ export async function planDailyReminders(at: Date = new Date()): Promise<Reminde
   const prefBy = new Map(prefs.map((p) => [p.facultyId, p]));
   const now = Date.now();
   const active = announcements.filter((a) => (!a.expiresAt || Date.parse(a.expiresAt) > now) && Date.parse(a.createdAt) > now - 3 * 86400000);
-  const site = siteConfig();
+  const site = { ...siteConfig(), url: siteUrlFor(space) };
 
   // Changes published in the last day that land on today's classes.
   const since = now - 26 * 3600 * 1000;
@@ -68,8 +69,8 @@ export async function planDailyReminders(at: Date = new Date()): Promise<Reminde
 }
 
 /** Send the planned reminders and write the delivery log. */
-export async function sendDailyReminders(at: Date = new Date()) {
-  const plan = await planDailyReminders(at);
+export async function sendDailyReminders(at: Date = new Date(), space: Space = DEFAULT_SPACE) {
+  const plan = await planDailyReminders(at, space);
   if (plan.skip || plan.recipients.length === 0) {
     return { ...plan, sent: 0, failed: 0, skipped: 0 };
   }
@@ -78,7 +79,7 @@ export async function sendDailyReminders(at: Date = new Date()) {
     content: r.content,
   }));
   const log = await sendBatch("daily", Number(plan.date.replace(/-/g, "")), items);
-  await getStore().addEmailLog(log);
+  await getStore(space).addEmailLog(log);
   const count = (s: string) => log.filter((l) => l.status === s).length;
   return { ...plan, sent: count("sent"), failed: count("failed"), skipped: count("skipped") };
 }

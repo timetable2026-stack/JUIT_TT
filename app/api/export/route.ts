@@ -2,6 +2,7 @@
 // them stacked — in the TTC's "Faculty Timetable" layout.
 // e.g. /api/export?kind=faculty&id=AKA   /api/export?kind=section&id=26BT27   /api/export?kind=room&id=all
 import { isAdmin } from "@/lib/auth";
+import { spaceOf } from "@/lib/space";
 import { allRooms, allSections, buildExport, type ExportKind } from "@/lib/exportGrid";
 import { getStore } from "@/lib/store";
 import { writeXlsx } from "@/lib/xlsxWriter";
@@ -14,7 +15,7 @@ export async function GET(req: Request) {
   const kind = (url.searchParams.get("kind") ?? "faculty") as ExportKind;
   const id = (url.searchParams.get("id") ?? "").trim();
   if (!["faculty", "section", "room"].includes(kind) || !id) return new Response("kind and id are required", { status: 400 });
-  const live = await getStore().getPublished();
+  const live = await getStore(spaceOf(req)).getPublished();
   if (!live) return new Response("No timetable published", { status: 404 });
   if (id !== "all") {
     const known = kind === "faculty" ? live.data.faculty.some((f) => f.id === id) : kind === "room" ? allRooms(live.data).includes(id) : allSections(live.data).some((s) => s.id === id);

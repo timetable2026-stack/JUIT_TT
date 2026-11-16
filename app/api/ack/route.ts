@@ -1,5 +1,6 @@
 // Public: a faculty member marks a publish as seen.
 import { getStore } from "@/lib/store";
+import { spaceOf } from "@/lib/space";
 import { invalidatePublicPayload } from "@/lib/publicPayload";
 
 export async function POST(req: Request) {
@@ -7,7 +8,7 @@ export async function POST(req: Request) {
   const versionId = Number(body.versionId);
   const facultyId = String(body.facultyId ?? "").trim();
   if (!versionId || !facultyId) return Response.json({ error: "versionId and facultyId required" }, { status: 400 });
-  await getStore().addAck({ versionId, facultyId, seenAt: new Date().toISOString() });
-  invalidatePublicPayload();
+  await getStore(spaceOf(req)).addAck({ versionId, facultyId, seenAt: new Date().toISOString() });
+  invalidatePublicPayload(spaceOf(req));
   return Response.json({ ok: true });
 }

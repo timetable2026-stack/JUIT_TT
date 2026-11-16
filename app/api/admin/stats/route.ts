@@ -1,5 +1,6 @@
 // Admin: load and utilisation statistics of the published timetable; ?format=xlsx downloads them.
 import { requireAdmin } from "@/lib/auth";
+import { spaceOf } from "@/lib/space";
 import { computeStats, statsToSheets } from "@/lib/stats";
 import { getStore } from "@/lib/store";
 import { STYLES } from "@/lib/exportGrid";
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   const denied = requireAdmin(req); if (denied) return denied;
-  const live = await getStore().getPublished();
+  const live = await getStore(spaceOf(req)).getPublished();
   if (!live) return Response.json({ error: "Nothing published yet" }, { status: 404 });
   const stats = computeStats(live.data, live.id, live.publishedAt);
   if (new URL(req.url).searchParams.get("format") !== "xlsx") return Response.json(stats, { headers: { "Cache-Control": "private, max-age=60" } });

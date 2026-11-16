@@ -1,5 +1,6 @@
 // Admin: post an announcement (portal alert, optionally emailed to the chosen audience).
 import { revalidatePath } from "next/cache";
+import { siteUrlFor, spaceOf } from "@/lib/space";
 import { requireAdmin } from "@/lib/auth";
 import { invalidatePublicPayload } from "@/lib/publicPayload";
 import { sendBatch } from "@/lib/email";
@@ -18,13 +19,13 @@ async function handlePOST(req: Request) {
   const text = String(body.body ?? "").trim().slice(0, 5000);
   if (!title || !text) return Response.json({ error: "Title and body are required" }, { status: 400 });
   const audience: Announcement["audience"] = body.audience?.kind === "semester" ? { kind: "semester", semester: String(body.audience.semester) } : body.audience?.kind === "faculty" ? { kind: "faculty", ids: (body.audience.ids ?? []).map((s: string) => String(s).trim()) } : { kind: "all" };
-  const store = getStore();
+  const store = getStore(spaceOf(req));
   const ann = await store.createAnnouncement({ createdAt: new Date().toISOString(), title, body: text, audience, emailed: Boolean(body.email), expiresAt: body.expiresAt ? String(body.expiresAt) : undefined });
 
   let emails = { sent: 0, failed: 0, skipped: 0, recipients: 0 };
   if (body.email) {
     const live = await store.getPublished();
-    const site = siteConfig();
+    const site = { ...siteConfig(), url: siteUrlFor(spaceOf(req)) };
     const faculty = live?.data.faculty ?? [];
     const recipients = faculty.filter((f) => {
       if (!f.email) return false;
@@ -36,7 +37,7 @@ async function handlePOST(req: Request) {
     await store.addEmailLog(log);
     emails = { sent: log.filter((l) => l.status === "sent").length, failed: log.filter((l) => l.status === "failed").length, skipped: log.filter((l) => l.status === "skipped").length, recipients: recipients.length };
   }
-  invalidatePublicPayload(); revalidatePath("/");
+  invalidatePublicPayload(spaceOf(req)); revalidatePath(spaceOf(req).portal || "/");
   return Response.json({ ok: true, announcement: ann, emails });
 }
 

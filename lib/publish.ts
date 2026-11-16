@@ -7,6 +7,7 @@ import { buildExport } from "./exportGrid";
 import { writeXlsx } from "./xlsxWriter";
 import { changeEmail, firstPublishEmail } from "./format";
 import { siteConfig } from "./site";
+import { DEFAULT_SPACE, siteUrlFor, type Space } from "./space";
 import { getStore } from "./store";
 import type { Dataset, Version } from "./types";
 
@@ -15,9 +16,10 @@ export interface PublishResult {
   emails: { sent: number; failed: number; skipped: number; recipients: number };
 }
 
-export async function publishDataset(opts: { data: Dataset; note?: string; fileName?: string; issues: Version["issues"]; existingDraftId?: number; sendEmail: boolean }): Promise<PublishResult> {
-  const store = getStore();
-  const site = siteConfig();
+export async function publishDataset(opts: { data: Dataset; note?: string; fileName?: string; issues: Version["issues"]; existingDraftId?: number; sendEmail: boolean; space?: Space }): Promise<PublishResult> {
+  const space = opts.space ?? DEFAULT_SPACE;
+  const store = getStore(space);
+  const site = { ...siteConfig(), url: siteUrlFor(space) };
   const live = await store.getPublished();
   const prefs = new Map((await store.listPrefs()).map((p) => [p.facultyId, p]));
   const wantsEmail = (id: string) => prefs.get(id)?.changeEmails !== false;

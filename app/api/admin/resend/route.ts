@@ -1,5 +1,6 @@
 // Admin: re-email a publish to the faculty who have not yet marked it as seen.
 import { requireAdmin } from "@/lib/auth";
+import { siteUrlFor, spaceOf } from "@/lib/space";
 import { changesByFaculty } from "@/lib/diff";
 import { sendBatch } from "@/lib/email";
 import { buildExport } from "@/lib/exportGrid";
@@ -14,11 +15,11 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const denied = requireAdmin(req); if (denied) return denied;
   const body = await req.json().catch(() => ({}));
-  const store = getStore();
+  const store = getStore(spaceOf(req));
   const v = await store.getVersion(Number(body.versionId));
   if (!v || v.status === "draft") return Response.json({ error: "Version not found" }, { status: 404 });
   const seen = new Set((await store.listAcks([v.id])).map((a) => a.facultyId));
-  const site = siteConfig();
+  const site = { ...siteConfig(), url: siteUrlFor(spaceOf(req)) };
   const byFac = changesByFaculty(v.changes);
   const targets = v.changes.length ? v.data.faculty.filter((f) => byFac.has(f.id)) : v.data.faculty;
   const JSZip = (await import("jszip")).default;

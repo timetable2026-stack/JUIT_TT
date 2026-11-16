@@ -115,6 +115,24 @@ reported as a clash.
   rate-limited, downloads and admin pages are never cached, error / not-found / loading pages, skip link,
   focus rings, ARIA tabs, reduced-motion support, installable as a home-screen app.
 
+## 2d. A second, separate copy for the current semester (`/2026`)
+
+The site can carry more than one complete system at once. The original stays exactly as it is
+(home page, `/admin`, tables `versions`, `acks`, …). A second copy for Jul–Dec 2026 lives at:
+
+| What | Original | Current semester |
+|---|---|---|
+| Portal (everyone) | `https://juit-tt.vercel.app/` | `https://juit-tt.vercel.app/2026` |
+| Admin | `/admin` | `/2026_admin` (same password) |
+| API | `/api/...` | `/2026/api/...` |
+| Supabase tables | `versions`, `acks`, `announcements`, `email_log`, `prefs`, `settings` | the same names with `_2026` |
+
+Setup is one step: open Supabase → SQL editor and run `supabase/schema_2026.sql` once. Then upload
+and publish the current-semester Excel from `/2026_admin` exactly as you do for the original. Everything
+else is independent per copy — versions, alerts, acknowledgements, preferences, reminder settings and the
+email log — and emails sent from the `/2026` copy link back to `/2026`. The morning reminder run covers
+both copies. Copies are declared in `lib/space.ts`; adding a third is one line there plus a schema file.
+
 ## 3. Run locally
 
 ```bash

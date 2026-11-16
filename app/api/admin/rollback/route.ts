@@ -1,5 +1,6 @@
 // Admin: republish an earlier version. It becomes a new version with its own diff and alerts.
 import { revalidatePath } from "next/cache";
+import { spaceOf } from "@/lib/space";
 import { requireAdmin } from "@/lib/auth";
 import { invalidatePublicPayload } from "@/lib/publicPayload";
 import { publishDataset } from "@/lib/publish";
@@ -11,10 +12,10 @@ export const dynamic = "force-dynamic";
 async function handlePOST(req: Request) {
   const denied = requireAdmin(req); if (denied) return denied;
   const body = await req.json().catch(() => ({}));
-  const target = await getStore().getVersion(Number(body.versionId));
+  const target = await getStore(spaceOf(req)).getVersion(Number(body.versionId));
   if (!target) return Response.json({ error: "Version not found" }, { status: 404 });
-  const result = await publishDataset({ data: target.data, note: body.note ? String(body.note).slice(0, 500) : `Rolled back to version ${target.id}`, fileName: target.fileName, issues: target.issues, sendEmail: body.sendEmail !== false });
-  invalidatePublicPayload(); revalidatePath("/"); revalidatePath("/sitemap.xml");
+  const result = await publishDataset({ space: spaceOf(req), data: target.data, note: body.note ? String(body.note).slice(0, 500) : `Rolled back to version ${target.id}`, fileName: target.fileName, issues: target.issues, sendEmail: body.sendEmail !== false });
+  invalidatePublicPayload(spaceOf(req)); revalidatePath(spaceOf(req).portal || "/"); revalidatePath("/sitemap.xml");
   return Response.json({ ok: true, versionId: result.version.id, summary: result.version.summary, emails: result.emails });
 }
 

@@ -5,7 +5,7 @@ import { allSections, slotBatches } from "@/lib/exportGrid";
 import { ThemeToggle } from "./ThemeToggle";
 import { LoadingScreen } from "./LoadingScreen";
 import { SearchSelect } from "./SearchSelect";
-import { DownloadButton, FacultyPicker, SlotModal, TimetableGrid, batchLabel, changedKeys, facultyName, fmtDate, nowHHMM, slotLabel, subjectTitle, todayDay, weekOfSemester } from "./shared";
+import { SpaceCtx, useSpace, DownloadButton, FacultyPicker, SlotModal, TimetableGrid, batchLabel, changedKeys, facultyName, fmtDate, nowHHMM, slotLabel, subjectTitle, todayDay, weekOfSemester } from "./shared";
 
 type Tab = "today" | "week" | "sections" | "rooms" | "alerts" | "people";
 const FID_KEY = "tt_fid";
@@ -13,7 +13,13 @@ const TABS: [Tab, string][] = [["today", "Today"], ["week", "My week"], ["sectio
 
 const TAB_KEY = "tt_tab";
 
-export function Portal({ initial }: { initial?: PublicPayload | null } = {}) {
+/** `base` = API prefix of this copy of the system ("" for the original, "/2026" for the current semester). */
+export function Portal({ initial, base = "", adminPath = "/admin" }: { initial?: PublicPayload | null; base?: string; adminPath?: string } = {}) {
+  return <SpaceCtx.Provider value={{ base, admin: adminPath }}><PortalInner initial={initial} /></SpaceCtx.Provider>;
+}
+
+function PortalInner({ initial }: { initial?: PublicPayload | null }) {
+  const { base, admin } = useSpace();
   const [payload, setPayload] = useState<PublicPayload | null>(initial ?? null);
   const [error, setError] = useState<string | null>(null);
   const [fid, setFid] = useState<string | null>(null);
@@ -24,7 +30,7 @@ export function Portal({ initial }: { initial?: PublicPayload | null } = {}) {
   const [search, setSearch] = useState("");
   const [jump, setJump] = useState<{ kind: "section" | "room" | "faculty"; id: string } | null>(null);
 
-  const load = () => fetch("/api/timetable", { cache: "no-store" }).then((r) => r.json()).then(setPayload).catch((e) => setError(String(e)));
+  const load = () => fetch(`${base}/api/timetable`, { cache: "no-store" }).then((r) => r.json()).then(setPayload).catch((e) => setError(String(e)));
   useEffect(() => {
     if (!initial) load();
     const params = new URLSearchParams(window.location.search);
@@ -65,7 +71,7 @@ export function Portal({ initial }: { initial?: PublicPayload | null } = {}) {
         <div className="empty-art">📅</div>
         <h2>No timetable published yet</h2>
         <p className="muted">When the Time Table Committee publishes the semester timetable, this page fills in on its own and every faculty member can open it from this same link.</p>
-        <a className="btn" href="/admin">TTC sign-in</a>
+        <a className="btn" href={admin}>TTC sign-in</a>
       </div></div>
     </Shell>
   );
@@ -104,7 +110,7 @@ export function Portal({ initial }: { initial?: PublicPayload | null } = {}) {
         {tab === "week" && !me && <div className="card"><p>Pick your name to see your week.</p><button className="btn primary" onClick={() => setPicking(true)}>Choose my name</button></div>}
         {tab === "sections" && <Sections payload={payload} onCell={setModal} initial={jump?.kind === "section" ? jump.id : undefined} />}
         {tab === "rooms" && <Rooms payload={payload} onCell={setModal} initial={jump?.kind === "room" ? jump.id : undefined} />}
-        {tab === "alerts" && <Alerts payload={payload} me={me} seen={seenVersions} onAck={async (vid) => { if (!me) return; await fetch("/api/ack", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ versionId: vid, facultyId: me.id }) }); load(); }} />}
+        {tab === "alerts" && <Alerts payload={payload} me={me} seen={seenVersions} onAck={async (vid) => { if (!me) return; await fetch(`${base}/api/ack`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ versionId: vid, facultyId: me.id }) }); load(); }} />}
         {tab === "people" && <People payload={payload} me={me} onCell={setModal} initial={jump?.kind === "faculty" ? jump.id : undefined} />}
 
         <div className="footer">
@@ -247,6 +253,7 @@ function Today({ me, slots, payload, prefs, unseen, goAlerts, onCell, tick, onPr
 }
 
 function ReminderCard({ me, prefs, payload, onSaved }: { me: Faculty; prefs?: Prefs; payload: PublicPayload; onSaved: () => void }) {
+  const { base, admin } = useSpace();
   const [busy, setBusy] = useState(false);
   const daily = prefs?.dailyReminder ?? true;
   const changes = prefs?.changeEmails ?? true;
@@ -254,7 +261,7 @@ function ReminderCard({ me, prefs, payload, onSaved }: { me: Faculty; prefs?: Pr
   const hour = `${String(s.reminderHour).padStart(2, "0")}:00`;
   const save = async (patch: Partial<Prefs>) => {
     setBusy(true);
-    try { await fetch("/api/prefs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ facultyId: me.id, ...patch }) }); onSaved(); } finally { setBusy(false); }
+    try { await fetch(`${base}/api/prefs`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ facultyId: me.id, ...patch }) }); onSaved(); } finally { setBusy(false); }
   };
   return (
     <div className="card" id="reminders">

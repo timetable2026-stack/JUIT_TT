@@ -1,6 +1,7 @@
 // Admin (and anyone with the link): download the blank template, or the current
 // published timetable as a workbook in the same layout (for editing and re-upload).
 import { templateSheets } from "@/lib/excel";
+import { spaceOf } from "@/lib/space";
 import { getStore } from "@/lib/store";
 
 export const runtime = "nodejs";
@@ -12,7 +13,7 @@ export async function GET(req: Request) {
   const wb = XLSX.utils.book_new();
   let name = "Timetable_Template.xlsx";
   if (which === "current") {
-    const live = await getStore().getPublished();
+    const live = await getStore(spaceOf(req)).getPublished();
     if (!live) return new Response("Nothing published yet", { status: 404 });
     const d = live.data;
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["Semester", "Section", "Day", "Period", "Start", "End", "Subject code", "Subject name", "Type", "Faculty ID", "Room", "Batch", "Notes"], ...d.slots.map((s) => [s.semester, s.section, s.day, s.period, s.start ?? "", s.end ?? "", s.subjectCode, s.subjectName, s.type, s.facultyIds.join(";"), s.room, s.batch ?? "", s.notes ?? ""])]), "Timetable");
