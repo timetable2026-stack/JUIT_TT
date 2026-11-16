@@ -10,10 +10,17 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   const admin = isAdmin(req);
   if (!admin) return Response.json({ admin: false });
-  const store = getStore(spaceOf(req));
-  const [versions, emailLog, announcements, acks, prefs, settings] = await Promise.all([
-    store.listVersionSummaries(60), store.listEmailLog(300), store.listAnnouncements(), store.listAcks(), store.listPrefs(), store.getSettings(),
-  ]);
+  const space = spaceOf(req);
+  const store = getStore(space);
+  let rows;
+  try {
+    rows = await Promise.all([store.listVersionSummaries(60), store.listEmailLog(300), store.listAnnouncements(), store.listAcks(), store.listPrefs(), store.getSettings()]);
+  } catch (e: any) {
+    const msg = String(e?.message ?? e);
+    const hint = space.id && /does not exist|relation|schema cache/i.test(msg) ? ` This copy's tables are not created yet: run supabase/schema${space.suffix}.sql once in Supabase → SQL editor.` : "";
+    return Response.json({ error: `Database error: ${msg}.${hint}` }, { status: 500 });
+  }
+  const [versions, emailLog, announcements, acks, prefs, settings] = rows;
   return Response.json({
     admin: true,
     config: { store: storeKind(), email: emailConfigured(), transport: emailTransport(), from: emailFrom(), site: siteConfig(), cron: Boolean(process.env.CRON_SECRET) },
